@@ -1,5 +1,8 @@
 module e3nn
 
-# Write your package code here.
+# o3
+include("o3/irreps.jl")
+using ._irreps
+export Irreps, Irrep
 
 end

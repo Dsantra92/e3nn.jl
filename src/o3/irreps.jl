@@ -1,8 +1,17 @@
 module _irreps
 
+using Random
+export Irreps, Irrep, isscalar
+
 struct Irrep
     l::Int
     p::Int
+
+    function Irrep(l::Int, p::Int)
+        (l > 0) || throw(ArgumentError("l must be positive integer, got $l"))
+        (p in (-1, 1)) || throw(ArgumentError("parity(p) must be one of (-1, 1) got $p"))
+        return new(l, p)
+    end
 end
 
 function Irrep(l::String)
@@ -10,11 +19,12 @@ function Irrep(l::String)
         name = strip(l)
         l = parse(Int, name[1:end-1])
         @assert l >= 0
-        p = {
-            "e": 1,
-            "o": -1,
-            "y": (-1) ^ l
-        }[name[end]]
+        p = Dict(
+            'e' => 1,
+            'o' => -1,
+            'y' => (-1) ^ l
+        )[name[end]]
+        return Irrep(l, p)
     catch
         ArgumentError("Cannot convert string $name to an Irrep")
     end
@@ -28,30 +38,28 @@ end
 
 Irrep(l::Irrep) = l
 
-function Irrep(l::Int, p::Int)
-    @assert l > 0, "l must be positive integer, got $l"
-    @assert p in (-1, 1), "parity must be one of (-1, 1) got $p"
-    return Irrep(l, p)
-end
-
 Base.ndims(x::Irrep) = 2 * x.l + 1
 
 isscalar(x::Irrep) = (x.l == 0) && (x.p == 1)
 
-function Base.*(x1::Irrep, x2::Irrep)
-    p = p(x1) * p(x2)
+function Base.:*(x1::Irrep, x2::Irrep)
+    p = x1.p * x2.p
     lmin = abs(x1.l - x2.l)
     lmax = x1.l + x2.l
     return (Irrep(l, p) for l in lmin:lmax)
 end
 
-function Base.+(x1::Irrep, x2::Irrep)
+function Base.:*(i::Int, x::Irrep)
+    return Irreps([(i, x)])
+end
+
+function Base.:+(x1::Irrep, x2::Irrep)
     return Irreps(x1) + Irreps(x2)
 end
 
-function Base.show(io::IO, d::Irrep)
-    p = {+1: "e", -1: "o"}[p(d)]
-    s = "$l(d)$p(d)"
+function Base.show(io::IO, x::Irrep)
+    p = Dict(+1 => "e", -1 => "o")[x.p]
+    s = "$(x.l)$p"
     print(io, s)
 end
 
@@ -70,8 +78,6 @@ end
 function D_from_matrix(x::Irrep, axis, angle)
     throw(error("Not Implemnted yet"))
 end
-
-
 
 struct MulIrrep
     mul::Int
@@ -143,7 +149,7 @@ function spherical_harmonics(lmax::Int, p::Int=-1)::Irreps
 end
 
 
-function randn(rng=GLOBAL_RNG, xs::Irreps, dims::Tuple(Int), normalization="component", T)
+function randn(rng::Random.AbstractRNG, xs::Irreps, dims::Tuple, normalization::String, T)
     di = dims[end]
     lsize = dims[:di]
     rsize = dims[di + 1 :]
@@ -190,7 +196,7 @@ Base.ndims(xs::Irreps) = sum(mul * ndims(irrep) for (mul, irrep) in xs)
 
 num_irreps(xs::Irreps) = sum(mul for (mul, _) in xs)
 
-ls = [l for (mul, (l, p) in xs for for _ in 1:1:mul-1)]
+# ls(xs) = [l for (mul, (l, p)) in xs for _ in 1:1:mul-1]
 
 function lmax(xs::Irreps)::Int
     if length(xs) == 0
@@ -199,11 +205,11 @@ function lmax(xs::Irreps)::Int
     return max(ls(xs))
 end
 
-function Base.show(io::IO, d::Irrep)
-    p = {+1: "e", -1: "o"}[p(d)]
-    s = "$l(d)$p(d)"
-    print(io, s)
-end
+# function Base.show(io::IO, d::Irreps)
+#     p = Dict(+1: "e", -1 => "o")[p(d)]
+#     s = "$l(d)$p(d)"
+#     print(io, s)
+# end
 
 function D_from_angles(xs::Irreps, α, β, γ, k)
     throw(error("Not Implemnted yet"))
