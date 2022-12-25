@@ -1,22 +1,22 @@
 module _irreps
 
-using Random
-export Irreps, Irrep, isscalar
+using Random: GLOBAL_RNG, AbstractRNG
+export Irrep, Irreps, spherical_harmonics, ls, num_irreps
 
 struct Irrep
     l::Int
     p::Int
 
     function Irrep(l::Int, p::Int)
-        (l > 0) || throw(ArgumentError("l must be positive integer, got $l"))
+        (l >= 0) || throw(ArgumentError("l must be zero or positive integer, got $l"))
         (p in (-1, 1)) || throw(ArgumentError("parity(p) must be one of (-1, 1) got $p"))
         return new(l, p)
     end
 end
 
-function Irrep(l::String)
+function Irrep(l::T) where T<:AbstractString
+    name = strip(l)
     try
-        name = strip(l)
         l = parse(Int, name[1:end-1])
         @assert l >= 0
         p = Dict(
@@ -26,7 +26,7 @@ function Irrep(l::String)
         )[name[end]]
         return Irrep(l, p)
     catch
-        ArgumentError("Cannot convert string $name to an Irrep")
+        throw(ArgumentError("Cannot convert string $name to an Irrep"))
     end
 end
 
@@ -85,44 +85,50 @@ struct MulIrrep
 end
 
 function Base.show(io::IO, mx::MulIrrep)
-    s = "$(mx.mul)$(mx.irrep)"
+    s = "$(mx.mul)x$(mx.irrep)"
     print(io, s)
 end
 
-
 Base.ndims(mx::MulIrrep) = mx.mul * ndims(mx.irrep)
 
-
 struct Irreps
+    irreps::Vector{MulIrrep}
 end
 
-Irreps(irreps::Irreps) = irreps
+# Base.iterate(xs::Irreps) = iterate(xs.irreps)
 
-Irreps(irreps::Irrep) = Irreps([MulIrrep(1, Irrep(irreps))])
+Irreps(irrep::Irrep) = Irreps([MulIrrep(1, irrep)])
 
-function Irreps(irreps::String)
+function Irreps(irreps::T) where T<:AbstractString
+    mulirreps = MulIrrep[]
     if strip(irreps) != ""
-        for mul_irrep in irreps.split("+")
-            if "x" in mul_irrep
-                mul, irrep = mul_irrep.split("x")
+        for mul_irrep in split(irreps, "+")
+            if occursin("x", mul_irrep)
+                mul, irrep = split(mul_irrep, "x")
                 mul = parse(Int, mul)
-                @assert mul >= 0
+                (mul >= 0) || throw(ArgumentError("mul should be greater than 0 got $mul"))
                 irrep = Irrep(irrep)
             else
                 mul = 1
                 irrep = Irrep(mul_irrep)
             end
-            return Irreps([MulIrrep(mul, irrep)])
+            push!(mulirreps, MulIrrep(mul, irrep))
         end
     end
+    return Irreps(mulirreps)
 end
 
 # fallback
-function Irreps(irreps)
+function Irreps(irreps::AbstractVector)
+    mul = nothing
+    irrep = nothing
+    out = MulIrrep[]
     for mul_irrep in irreps
-        mul::Irrep
-        irrep::Int
         if typeof(mul_irrep) <:AbstractString
+            # fix case for mixture of irrep and irrpes in a vector
+            # if occursin("+", mul_irrep)
+            #     irreps = Irreps(mul_irrep)
+            # end
             mul = 1
             irrep = Irrep(mul_irrep)
         elseif mul_irrep isa Irrep
@@ -130,7 +136,7 @@ function Irreps(irreps)
             irrep = mul_irrep
         elseif mul_irrep isa MulIrrep
             mul, irrep = mul_irrep
-        elseif len(mul_irrep) == 2
+        elseif length(mul_irrep) == 2
             mul, irrep = mul_irrep
             irrep = Irrep(irrep)
         else
@@ -141,6 +147,11 @@ function Irreps(irreps)
     return Irreps(out)
 end
 
+function Base.show(io::IO, xs::Irreps)
+    s = join(["$(mul_irrep)" for mul_irrep in xs.irreps], "+")
+    print(io, s)
+end
+
 """
 Representation of spherical harmonics.
 """
@@ -148,17 +159,14 @@ function spherical_harmonics(lmax::Int, p::Int=-1)::Irreps
     return Irreps([(1, (l, p^l)) for l in 1:lmax])
 end
 
-
-function randn(rng::Random.AbstractRNG, xs::Irreps, dims::Tuple, normalization::String, T)
+function randn(xs::Irreps, dims, normalization::String, rng::AbstractRNG, ::Type{T}) where T<:Number
     di = dims[end]
     lsize = dims[:di]
     rsize = dims[di + 1 :]
 
     if normalization == "component"
         return randn(rng, T, lsize..., ndims(xs), rsize...)
-    elseif normalization == "norm"
-        x =  zeros(T, lsize..., ndims(xs), rsize...)
-        
+    # implement the norm
     end
 end
 
@@ -194,9 +202,9 @@ end
 
 Base.ndims(xs::Irreps) = sum(mul * ndims(irrep) for (mul, irrep) in xs)
 
-num_irreps(xs::Irreps) = sum(mul for (mul, _) in xs)
+num_irreps(xs::Irreps) = sum(xs.mul for xs in xs.irreps)
 
-# ls(xs) = [l for (mul, (l, p)) in xs for _ in 1:1:mul-1]
+ls(xs::Irreps) = [l for (mul, (l, p)) in xs.irreps for _ in 1:mul]
 
 function lmax(xs::Irreps)::Int
     if length(xs) == 0
@@ -204,12 +212,6 @@ function lmax(xs::Irreps)::Int
     end
     return max(ls(xs))
 end
-
-# function Base.show(io::IO, d::Irreps)
-#     p = Dict(+1: "e", -1 => "o")[p(d)]
-#     s = "$l(d)$p(d)"
-#     print(io, s)
-# end
 
 function D_from_angles(xs::Irreps, α, β, γ, k)
     throw(error("Not Implemnted yet"))
