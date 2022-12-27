@@ -2,5 +2,5 @@ using e3nn
 using Test
 
 @testset "e3nn.jl" begin
-    # Write your tests here.
+    include("o3/irreps.jl")
 end
