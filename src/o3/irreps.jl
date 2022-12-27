@@ -1,7 +1,4 @@
-module _irreps
-
 using Random: GLOBAL_RNG, AbstractRNG
-export Irrep, Irreps, spherical_harmonics, ls, num_irreps
 
 struct Irrep
     l::Int
@@ -18,7 +15,7 @@ function Irrep(l::T) where T<:AbstractString
     name = strip(l)
     try
         l = parse(Int, name[1:end-1])
-        @assert l >= 0
+        (l >= 0) || throw(ArgumentError("l must be zero or positive integer, got $l"))
         p = Dict(
             'e' => 1,
             'o' => -1,
@@ -38,7 +35,7 @@ end
 
 Irrep(l::Irrep) = l
 
-Base.ndims(x::Irrep) = 2 * x.l + 1
+dim(x::Irrep) = 2 * x.l + 1
 
 isscalar(x::Irrep) = (x.l == 0) && (x.p == 1)
 
@@ -56,6 +53,9 @@ end
 function Base.:+(x1::Irrep, x2::Irrep)
     return Irreps(x1) + Irreps(x2)
 end
+
+# Used for comparison
+Base.isless(x1::Irrep, x2::Irrep) = Base.isless((x1.l, x1.p), (x2.l, x2.p)) 
 
 function Base.show(io::IO, x::Irrep)
     p = Dict(+1 => "e", -1 => "o")[x.p]
@@ -89,15 +89,15 @@ function Base.show(io::IO, mx::MulIrrep)
     print(io, s)
 end
 
-Base.ndims(mx::MulIrrep) = mx.mul * ndims(mx.irrep)
+dim(mx::MulIrrep) = mx.mul * dim(mx.irrep)
 
+Base.convert(::Type{Tuple}, x::MulIrrep) = (x.mul, x.irrep)
 struct Irreps
     irreps::Vector{MulIrrep}
 end
 
-# Base.iterate(xs::Irreps) = iterate(xs.irreps)
-
 Irreps(irrep::Irrep) = Irreps([MulIrrep(1, irrep)])
+Irreps(irreps::Irreps) = irreps
 
 function Irreps(irreps::T) where T<:AbstractString
     mulirreps = MulIrrep[]
@@ -152,6 +152,22 @@ function Base.show(io::IO, xs::Irreps)
     print(io, s)
 end
 
+Base.:(==)(x1::Irreps, x2::Irreps) = x1.irreps == x2.irreps
+Base.:+(x1::Irreps, x2::Irreps) = Irreps(vcat(x1.irreps, x2.irreps))
+Base.:*(i::Int, xs::Irreps) = Irreps(repeat(xs.irreps, i))
+Base.:*(xs::Irreps, i::Int) = Base.:*(i::Int, xs::Irreps)
+
+Base.length(xs::Irreps) = length(xs.irreps)
+
+Base.getindex(xs::Irreps, i::Int) = xs.irreps[i]
+Base.getindex(xs::Irreps, idx::AbstractRange) = xs.irreps[idx] |> Irreps
+Base.firstindex(xs::Irreps) = Base.firstindex(xs.irreps)
+Base.lastindex(xs::Irreps) = Base.lastindex(xs.irreps)
+
+Base.in(x::Irrep, xs::Irreps) = x ∈ [mx.irrep for mx in xs.irreps]
+Base.count(x::Irrep, xs::Irreps) = sum([mx.mul for mx in xs.irreps if mx.irrep == x], init=0)
+Base.iterate(xs::Irreps, state=1) = state > length(xs) ? nothing : (xs[state], state+1)
+
 """
 Representation of spherical harmonics.
 """
@@ -159,13 +175,13 @@ function spherical_harmonics(lmax::Int, p::Int=-1)::Irreps
     return Irreps([(1, (l, p^l)) for l in 1:lmax])
 end
 
-function randn(xs::Irreps, dims, normalization::String, rng::AbstractRNG, ::Type{T}) where T<:Number
+function Base.randn(xs::Irreps, dims, normalization::String, rng::AbstractRNG, ::Type{T}) where T<:Number
     di = dims[end]
     lsize = dims[:di]
     rsize = dims[di + 1 :]
 
     if normalization == "component"
-        return randn(rng, T, lsize..., ndims(xs), rsize...)
+        return randn(rng, T, lsize..., dim(xs), rsize...)
     # implement the norm
     end
 end
@@ -193,24 +209,24 @@ remove_zero_multiplicities(xs::Irreps) = [(mul, irreps) for (mul, irreps) in xs 
 """
 Sort the representations.
 """
-function sort(xs::Irreps)::Irreps
-    out = [(irrep, i, mul) for (i, (mul, irrep)) in enumerate(xs)]
-    out = sort(sort)
-    sorted_irreps = Irreps([(mul, ir) for (ir, _, mul) in out])
+function Base.sort(xs::Irreps)::Irreps
+    out = [(mx.irrep, i, mx.mul) for (i, mx) in enumerate(xs)]
+    out = Base.sort(out)
+    sorted_irreps = Irreps([(mul, irrep) for (irrep, _, mul) in out])
     return sorted_irreps
 end
 
-Base.ndims(xs::Irreps) = sum(mul * ndims(irrep) for (mul, irrep) in xs)
+dim(xs::Irreps) = sum([mx.mul * dim(mx.irrep) for mx in xs], init=0)
 
-num_irreps(xs::Irreps) = sum(xs.mul for xs in xs.irreps)
+num_irreps(xs::Irreps) = sum([mx.mul for mx in xs], init=0)
 
-ls(xs::Irreps) = [l for (mul, (l, p)) in xs.irreps for _ in 1:mul]
+ls(xs::Irreps) = [mx.irrep.l for mx in xs for _ in 1:mx.mul]
 
 function lmax(xs::Irreps)::Int
     if length(xs) == 0
         throw(ArgumentError("Cannot get lmax of empty Irreps"))
     end
-    return max(ls(xs))
+    return maximum(ls(xs))
 end
 
 function D_from_angles(xs::Irreps, α, β, γ, k)
@@ -227,6 +243,4 @@ end
 
 function D_from_axis_angle(xs::Irreps, axis, angle)
     throw(error("Not Implemnted yet"))
-end
-
 end
