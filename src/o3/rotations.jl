@@ -4,9 +4,9 @@ using Quaternions
 using Rotations
 using StaticArrays
 
-export Quaternion, QuatRotation
-export RotMatrix
-export euler_angles
+export Quaternion
+export RotMatrix, RotMatrix3, AngleAxis, RotYXY, QuatRotation
+export euler_angles, CartesianToSphericalAngles, SphercialAnglesToCartesian
 
 # Cross conversion
 
@@ -20,15 +20,15 @@ function (::Type{AA})(q::Quaternion) where AA <: AngleAxis
 end
 
 function (::Type{AA})(;α::Real, β::Real, γ::Real) where AA <: AngleAxis
-    AA(RotYZY(promote(α, β, γ)...))
+    AA(RotYXY(promote(α, β, γ)...))
 end
 
 function (::Type{Q})(;α::Real, β::Real, γ::Real) where Q <: Quaternion
-    return QuatRotation(RotYZY(promote(α, β, γ)...)).q |> Q
+    return QuatRotation(RotYXY(promote(α, β, γ)...)).q |> Q
 end
 
 function euler_angles(x::T) where T <: Union{QuatRotation, RotMatrix3, AngleAxis}
-    Rotations.params(RotYZY(x))
+    Rotations.params(RotYXY(x))
 end
 
 euler_angles(q::Q) where Q<:Quaternion = euler_angles(QuatRotation(q, false))
