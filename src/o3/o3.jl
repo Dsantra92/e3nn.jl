@@ -12,5 +12,7 @@ export Quaternion
 export RotMatrix, RotMatrix3, AngleAxis, RotYXY, QuatRotation
 export euler_angles, CartesianToSphericalAngles, SphercialAnglesToCartesian
 
+include("spherical_harmonics.jl")
+export spherical_harmonics, SphericalHarmonics
 
 end

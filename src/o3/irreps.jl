@@ -11,16 +11,12 @@ struct Irrep
     end
 end
 
-function Irrep(l::T) where T<:AbstractString
+function Irrep(l::T) where {T<:AbstractString}
     name = strip(l)
     try
         l = parse(Int, name[1:end-1])
         (l >= 0) || throw(ArgumentError("l must be zero or positive integer, got $l"))
-        p = Dict(
-            'e' => 1,
-            'o' => -1,
-            'y' => (-1) ^ l
-        )[name[end]]
+        p = Dict('e' => 1, 'o' => -1, 'y' => (-1)^l)[name[end]]
         return Irrep(l, p)
     catch
         throw(ArgumentError("Cannot convert string $name to an Irrep"))
@@ -39,11 +35,13 @@ dim(x::Irrep) = 2 * x.l + 1
 
 isscalar(x::Irrep) = (x.l == 0) && (x.p == 1)
 
+Base.iterate(x::Irrep, args...) = iterate((x.l, x.p), args...)
+
 function Base.:*(x1::Irrep, x2::Irrep)
     p = x1.p * x2.p
     lmin = abs(x1.l - x2.l)
     lmax = x1.l + x2.l
-    return (Irrep(l, p) for l in lmin:lmax)
+    return (Irrep(l, p) for l = lmin:lmax)
 end
 
 function Base.:*(i::Int, x::Irrep)
@@ -55,7 +53,7 @@ function Base.:+(x1::Irrep, x2::Irrep)
 end
 
 # Used for comparison
-Base.isless(x1::Irrep, x2::Irrep) = Base.isless((x1.l, x1.p), (x2.l, x2.p)) 
+Base.isless(x1::Irrep, x2::Irrep) = Base.isless((x1.l, x1.p), (x2.l, x2.p))
 
 function Base.show(io::IO, x::Irrep)
     p = Dict(+1 => "e", -1 => "o")[x.p]
@@ -99,7 +97,7 @@ end
 Irreps(irrep::Irrep) = Irreps([MulIrrep(1, irrep)])
 Irreps(irreps::Irreps) = irreps
 
-function Irreps(irreps::T) where T<:AbstractString
+function Irreps(irreps::T) where {T<:AbstractString}
     mulirreps = MulIrrep[]
     if strip(irreps) != ""
         for mul_irrep in split(irreps, "+")
@@ -124,7 +122,7 @@ function Irreps(irreps::AbstractVector)
     irrep = nothing
     out = MulIrrep[]
     for mul_irrep in irreps
-        if typeof(mul_irrep) <:AbstractString
+        if typeof(mul_irrep) <: AbstractString
             # fix case for mixture of irrep and irrpes in a vector
             # if occursin("+", mul_irrep)
             #     irreps = Irreps(mul_irrep)
@@ -165,24 +163,33 @@ Base.firstindex(xs::Irreps) = Base.firstindex(xs.irreps)
 Base.lastindex(xs::Irreps) = Base.lastindex(xs.irreps)
 
 Base.in(x::Irrep, xs::Irreps) = x ∈ [mx.irrep for mx in xs.irreps]
-Base.count(x::Irrep, xs::Irreps) = sum([mx.mul for mx in xs.irreps if mx.irrep == x], init=0)
-Base.iterate(xs::Irreps, state=1) = state > length(xs) ? nothing : (xs[state], state+1)
+Base.count(x::Irrep, xs::Irreps) =
+    sum([mx.mul for mx in xs.irreps if mx.irrep == x], init = 0)
+Base.iterate(xs::Irreps, state = 1) =
+    state > length(xs) ? nothing :
+    ((xs[state].mul, (xs[state].irrep.l, xs[state].irrep.p)), state + 1)
 
 """
 Representation of spherical harmonics.
 """
-function spherical_harmonics(lmax::Int, p::Int=-1)::Irreps
-    return Irreps([(1, (l, p^l)) for l in 1:lmax])
+function spherical_harmonics(lmax::Int, p::Int = -1)::Irreps
+    return Irreps([(1, (l, p^l)) for l = 1:lmax])
 end
 
-function Base.randn(xs::Irreps, dims, normalization::String, rng::AbstractRNG, ::Type{T}) where T<:Number
+function Base.randn(
+    xs::Irreps,
+    dims,
+    normalization::String,
+    rng::AbstractRNG,
+    ::Type{T},
+) where {T<:Number}
     di = dims[end]
     lsize = dims[:di]
     rsize = dims[di + 1 :]
 
     if normalization == "component"
         return randn(rng, T, lsize..., dim(xs), rsize...)
-    # implement the norm
+        # implement the norm
     end
 end
 
@@ -191,8 +198,8 @@ Simplify the representaions.
 """
 function simplify(xs::Irreps)::Irreps
     out = []
-    for (out, irreps) in xs
-        if out && out[end][2] == Irrep
+    for (mul, irrep) in xs
+        if length(out) != 0 && out[end][2] == irrep
             out[end] = (out[end][1] + mul, irrep)
         elseif mul > 0
             push!(out, (mul, irrep))
@@ -204,7 +211,8 @@ end
 """
 Remove any irreps with multiplicities of zero.
 """
-remove_zero_multiplicities(xs::Irreps) = [(mul, irreps) for (mul, irreps) in xs if mul > 0] |> Irreps
+remove_zero_multiplicities(xs::Irreps) =
+    [(mul, irreps) for (mul, irreps) in xs if mul > 0] |> Irreps
 
 """
 Sort the representations.
@@ -216,11 +224,11 @@ function Base.sort(xs::Irreps)::Irreps
     return sorted_irreps
 end
 
-dim(xs::Irreps) = sum([mx.mul * dim(mx.irrep) for mx in xs], init=0)
+dim(xs::Irreps) = sum([mx.mul * dim(mx.irrep) for mx in xs], init = 0)
 
-num_irreps(xs::Irreps) = sum([mx.mul for mx in xs], init=0)
+num_irreps(xs::Irreps) = sum([mx.mul for mx in xs], init = 0)
 
-ls(xs::Irreps) = [mx.irrep.l for mx in xs for _ in 1:mx.mul]
+ls(xs::Irreps) = [mx.irrep.l for mx in xs for _ = 1:mx.mul]
 
 function lmax(xs::Irreps)::Int
     if length(xs) == 0
