@@ -2,7 +2,6 @@ using e3nn.o3
 using Test
 
 @testset "Irreps" begin
-
     @testset "creation" begin
         Irrep(2, 1)
         ir = Irrep("3o")
@@ -66,7 +65,7 @@ using Test
             repeat([2], 12),
             repeat([1], 1),
             repeat([2], 2),
-            repeat([4], 12),
+            repeat([4], 12)
         )
         @test lmax(irreps) == 4
         @test num_irreps(irreps) == 4 + 6 + 12 + 1 + 2 + 12
@@ -84,5 +83,4 @@ using Test
         @test_throws ArgumentError Irreps("-1x1e")
         @test_throws ArgumentError Irreps("bla")
     end
-
 end

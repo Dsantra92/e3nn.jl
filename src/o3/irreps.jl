@@ -11,10 +11,10 @@ struct Irrep
     end
 end
 
-function Irrep(l::T) where {T<:AbstractString}
+function Irrep(l::T) where {T <: AbstractString}
     name = strip(l)
     try
-        l = parse(Int, name[1:end-1])
+        l = parse(Int, name[1:(end - 1)])
         (l >= 0) || throw(ArgumentError("l must be zero or positive integer, got $l"))
         p = Dict('e' => 1, 'o' => -1, 'y' => (-1)^l)[name[end]]
         return Irrep(l, p)
@@ -41,7 +41,7 @@ function Base.:*(x1::Irrep, x2::Irrep)
     p = x1.p * x2.p
     lmin = abs(x1.l - x2.l)
     lmax = x1.l + x2.l
-    return (Irrep(l, p) for l = lmin:lmax)
+    return (Irrep(l, p) for l in lmin:lmax)
 end
 
 function Base.:*(i::Int, x::Irrep)
@@ -96,7 +96,7 @@ end
 Irreps(irrep::Irrep) = Irreps([MulIrrep(1, irrep)])
 Irreps(irreps::Irreps) = irreps
 
-function Irreps(irreps::T) where {T<:AbstractString}
+function Irreps(irreps::T) where {T <: AbstractString}
     mulirreps = MulIrrep[]
     if strip(irreps) != ""
         for mul_irrep in split(irreps, "+")
@@ -162,26 +162,28 @@ Base.firstindex(xs::Irreps) = Base.firstindex(xs.irreps)
 Base.lastindex(xs::Irreps) = Base.lastindex(xs.irreps)
 
 Base.in(x::Irrep, xs::Irreps) = x ∈ [mx.irrep for mx in xs.irreps]
-Base.count(x::Irrep, xs::Irreps) =
+function Base.count(x::Irrep, xs::Irreps)
     sum([mx.mul for mx in xs.irreps if mx.irrep == x], init = 0)
-Base.iterate(xs::Irreps, state = 1) =
+end
+function Base.iterate(xs::Irreps, state = 1)
     state > length(xs) ? nothing :
     ((xs[state].mul, (xs[state].irrep.l, xs[state].irrep.p)), state + 1)
+end
 
 """
 Representation of spherical harmonics.
 """
 function spherical_harmonics(lmax::Int, p::Int = -1)::Irreps
-    return Irreps([(1, (l, p^l)) for l = 1:lmax])
+    return Irreps([(1, (l, p^l)) for l in 1:lmax])
 end
 
 function Base.randn(
-    xs::Irreps,
-    dims,
-    normalization::String,
-    rng::AbstractRNG,
-    ::Type{T},
-) where {T<:Number}
+        xs::Irreps,
+        dims,
+        normalization::String,
+        rng::AbstractRNG,
+        ::Type{T}
+) where {T <: Number}
     di = dims[end]
     lsize = dims[:di]
     rsize = dims[di + 1 :]
@@ -210,8 +212,8 @@ end
 """
 Remove any irreps with multiplicities of zero.
 """
-remove_zero_multiplicities(xs::Irreps) =
-    [(mul, irreps) for (mul, irreps) in xs if mul > 0] |> Irreps
+remove_zero_multiplicities(xs::Irreps) = [(mul, irreps) for (mul, irreps) in xs if mul > 0] |>
+                                         Irreps
 
 function Base.sort(xs::Irreps)::Irreps
     out = [(mx.irrep, i, mx.mul) for (i, mx) in enumerate(xs)]
@@ -224,7 +226,7 @@ dim(xs::Irreps) = sum([mx.mul * dim(mx.irrep) for mx in xs], init = 0)
 
 num_irreps(xs::Irreps) = sum([mx.mul for mx in xs], init = 0)
 
-ls(xs::Irreps) = [mx.irrep.l for mx in xs for _ = 1:mx.mul]
+ls(xs::Irreps) = [mx.irrep.l for mx in xs for _ in 1:(mx.mul)]
 
 function lmax(xs::Irreps)::Int
     if length(xs) == 0

@@ -6,10 +6,10 @@ struct SphericalHarmonics
     _is_range_lmax::Bool
 
     function SphericalHarmonics(
-        irreps_out::Union{AbstractVector{Int},o3.Irreps},
-        normalize::Bool,
-        normalization::String,
-        irreps_in,
+            irreps_out::Union{AbstractVector{Int}, o3.Irreps},
+            normalize::Bool,
+            normalization::String,
+            irreps_in
     )
         @assert normalization in ["integral", "component", "norm"]
 
@@ -27,8 +27,8 @@ struct SphericalHarmonics
         if !(irreps_in in (o3.Irreps("1x1o"), o3.Irreps("1x1e")))
             throw(
                 ArgumentError(
-                    "irreps_in for SphericalHarmonics must be either a vector (`1x1o`) or a pseudovector (`1x1e`), not `$(irreps_in)`",
-                ),
+                "irreps_in for SphericalHarmonics must be either a vector (`1x1o`) or a pseudovector (`1x1e`), not `$(irreps_in)`",
+            ),
             )
         end
         input_p = irreps_in[1].irrep.p
@@ -38,8 +38,8 @@ struct SphericalHarmonics
                 if p != input_p^l
                     throw(
                         ArgumentError(
-                            "irreps_out `$irreps_out` passed to SphericalHarmonics asked for an output of l = $l with parity p = $p, which is inconsistent with the input parity $input_p — the output parity should have been p = $(input_p^l)",
-                        ),
+                        "irreps_out `$irreps_out` passed to SphericalHarmonics asked for an output of l = $l with parity p = $p, which is inconsistent with the input parity $input_p — the output parity should have been p = $(input_p^l)",
+                    ),
                     )
                 end
                 append!(repeat(l, mul))
@@ -60,10 +60,10 @@ struct SphericalHarmonics
 end
 
 function SphericalHarmonics(
-    irreps_out::String,
-    normalize::Bool,
-    normalization::String,
-    irreps_in::Any,
+        irreps_out::String,
+        normalize::Bool,
+        normalization::String,
+        irreps_in::Any
 )
     irreps_out_rep = o3.Irreps(irreps_out)
     return SphericalHarmonics(irreps_out_rep, normalize, normalization, irreps_in)
@@ -74,15 +74,13 @@ function (sh::SphericalHarmonics)(x::AbstractArray)
         foreach(normalize!, eachslice(x, dims = ndims(x), drop = false))
     end
 
-    sh_matrix =
-        _spherical_harmonics(sh._lmax, eachslice(x, dims = ndims(x), drop = false)...)
+    sh_matrix = _spherical_harmonics(
+        sh._lmax, eachslice(x, dims = ndims(x), drop = false)...)
     if !sh._is_range_lmax
         return cat(
-            [
-                eachslice(sh_matrix, dims = ndims(sh_matrix), drop = false)[l*l:(l+1)*(l+1)]
-                for l in sh._ls_list
-            ],
-            dims = ndims(x) + 1,
+            [eachslice(sh_matrix, dims = ndims(sh_matrix), drop = false)[(l * l):((l + 1) * (l + 1))]
+             for l in sh._ls_list],
+            dims = ndims(x) + 1
         )
     end
     if sh.normalization == "integral"
@@ -95,10 +93,10 @@ function (sh::SphericalHarmonics)(x::AbstractArray)
 end
 
 function _spherical_harmonics(
-    lmax::Int,
-    x::AbstractArray,
-    y::AbstractArray,
-    z::AbstractArray,
+        lmax::Int,
+        x::AbstractArray,
+        y::AbstractArray,
+        z::AbstractArray
 )
     sh_0_0 = fill(similar(x), 1.0)
 
@@ -124,7 +122,7 @@ function _spherical_harmonics(
     if lmax == 2
         return stack(
             [sh_0_0, sh_1_0, sh_1_1, sh_1_2, sh_2_0, sh_2_1, sh_2_2, sh_2_3, sh_2_4],
-            dims = ndims(sh_0_0) + 1,
+            dims = ndims(sh_0_0) + 1
         )
     end
 
@@ -154,17 +152,16 @@ function _spherical_harmonics(
                 sh_3_3,
                 sh_3_4,
                 sh_3_5,
-                sh_3_6,
+                sh_3_6
             ],
-            ndims(sh_0_0) + 1,
+            ndims(sh_0_0) + 1
         )
     end
 
     sh_4_0 = (3 / 4) * sqrt(2) * (sh_3_0 * z + sh_3_6 * x)
-    sh_4_1 =
-        (3 / 4) * sh_3_0 * y +
-        (3 / 8) * sqrt(6) * sh_3_1 * z +
-        (3 / 8) * sqrt(6) * sh_3_5 * x
+    sh_4_1 = (3 / 4) * sh_3_0 * y +
+             (3 / 8) * sqrt(6) * sh_3_1 * z +
+             (3 / 8) * sqrt(6) * sh_3_5 * x
     sh_4_2 = (
         -3 / 56 * sqrt(14) * sh_3_0 * z +
         (3 / 14) * sqrt(21) * sh_3_1 * y +
@@ -178,9 +175,8 @@ function _spherical_harmonics(
         (3 / 28) * sqrt(70) * sh_3_3 * x +
         (3 / 56) * sqrt(42) * sh_3_5 * x
     )
-    sh_4_4 =
-        -3 / 28 * sqrt(42) * sh_3_2 * x + (3 / 7) * sqrt(7) * sh_3_3 * y -
-        3 / 28 * sqrt(42) * sh_3_4 * z
+    sh_4_4 = -3 / 28 * sqrt(42) * sh_3_2 * x + (3 / 7) * sqrt(7) * sh_3_3 * y -
+             3 / 28 * sqrt(42) * sh_3_4 * z
     sh_4_5 = (
         -3 / 56 * sqrt(42) * sh_3_1 * x +
         (3 / 28) * sqrt(70) * sh_3_3 * z +
@@ -191,10 +187,9 @@ function _spherical_harmonics(
         (3 / 56) * sqrt(210) * sh_3_4 * z +
         (3 / 14) * sqrt(21) * sh_3_5 * y - 3 / 56 * sqrt(14) * sh_3_6 * z
     )
-    sh_4_7 =
-        -3 / 8 * sqrt(6) * sh_3_1 * x +
-        (3 / 8) * sqrt(6) * sh_3_5 * z +
-        (3 / 4) * sh_3_6 * y
+    sh_4_7 = -3 / 8 * sqrt(6) * sh_3_1 * x +
+             (3 / 8) * sqrt(6) * sh_3_5 * z +
+             (3 / 4) * sh_3_6 * y
     sh_4_8 = (3 / 4) * sqrt(2) * (-sh_3_0 * x + sh_3_6 * z)
     if lmax == 4
         return stack(
@@ -223,17 +218,16 @@ function _spherical_harmonics(
                 sh_4_5,
                 sh_4_6,
                 sh_4_7,
-                sh_4_8,
+                sh_4_8
             ],
-            ndims(sh_0_0) + 1,
+            ndims(sh_0_0) + 1
         )
     end
 
     sh_5_0 = (1 / 10) * sqrt(110) * (sh_4_0 * z + sh_4_8 * x)
-    sh_5_1 =
-        (1 / 5) * sqrt(11) * sh_4_0 * y +
-        (1 / 5) * sqrt(22) * sh_4_1 * z +
-        (1 / 5) * sqrt(22) * sh_4_7 * x
+    sh_5_1 = (1 / 5) * sqrt(11) * sh_4_0 * y +
+             (1 / 5) * sqrt(22) * sh_4_1 * z +
+             (1 / 5) * sqrt(22) * sh_4_7 * x
     sh_5_2 = (
         -1 / 30 * sqrt(22) * sh_4_0 * z +
         (4 / 15) * sqrt(11) * sh_4_1 * y +
@@ -273,10 +267,9 @@ function _spherical_harmonics(
         (1 / 15) * sqrt(154) * sh_4_6 * z +
         (4 / 15) * sqrt(11) * sh_4_7 * y - 1 / 30 * sqrt(22) * sh_4_8 * z
     )
-    sh_5_9 =
-        -1 / 5 * sqrt(22) * sh_4_1 * x +
-        (1 / 5) * sqrt(22) * sh_4_7 * z +
-        (1 / 5) * sqrt(11) * sh_4_8 * y
+    sh_5_9 = -1 / 5 * sqrt(22) * sh_4_1 * x +
+             (1 / 5) * sqrt(22) * sh_4_7 * z +
+             (1 / 5) * sqrt(11) * sh_4_8 * y
     sh_5_10 = (1 / 10) * sqrt(110) * (-sh_4_0 * x + sh_4_8 * z)
     if lmax == 5
         return stack(
@@ -316,9 +309,9 @@ function _spherical_harmonics(
                 sh_5_7,
                 sh_5_8,
                 sh_5_9,
-                sh_5_10,
+                sh_5_10
             ],
-            ndims(sh_0_0) + 1,
+            ndims(sh_0_0) + 1
         )
     end
 
@@ -437,17 +430,16 @@ function _spherical_harmonics(
                 sh_6_9,
                 sh_6_10,
                 sh_6_11,
-                sh_6_12,
+                sh_6_12
             ],
-            ndims(sh_0_0) + 1,
+            ndims(sh_0_0) + 1
         )
     end
 
     sh_7_0 = (1 / 14) * sqrt(210) * (sh_6_0 * z + sh_6_12 * x)
-    sh_7_1 =
-        (1 / 7) * sqrt(15) * sh_6_0 * y +
-        (3 / 7) * sqrt(5) * sh_6_1 * z +
-        (3 / 7) * sqrt(5) * sh_6_11 * x
+    sh_7_1 = (1 / 7) * sqrt(15) * sh_6_0 * y +
+             (3 / 7) * sqrt(5) * sh_6_1 * z +
+             (3 / 7) * sqrt(5) * sh_6_11 * x
     sh_7_2 = (
         -1 / 182 * sqrt(390) * sh_6_0 * z +
         (6 / 91) * sqrt(130) * sh_6_1 * y +
@@ -512,10 +504,9 @@ function _spherical_harmonics(
         (6 / 91) * sqrt(130) * sh_6_11 * y - 1 / 182 * sqrt(390) * sh_6_12 * z -
         3 / 91 * sqrt(715) * sh_6_2 * x
     )
-    sh_7_13 =
-        -3 / 7 * sqrt(5) * sh_6_1 * x +
-        (3 / 7) * sqrt(5) * sh_6_11 * z +
-        (1 / 7) * sqrt(15) * sh_6_12 * y
+    sh_7_13 = -3 / 7 * sqrt(5) * sh_6_1 * x +
+              (3 / 7) * sqrt(5) * sh_6_11 * z +
+              (1 / 7) * sqrt(15) * sh_6_12 * y
     sh_7_14 = (1 / 14) * sqrt(210) * (-sh_6_0 * x + sh_6_12 * z)
     if lmax == 7
         return stack(
@@ -583,9 +574,9 @@ function _spherical_harmonics(
                 sh_7_11,
                 sh_7_12,
                 sh_7_13,
-                sh_7_14,
+                sh_7_14
             ],
-            ndims(sh_0_0) + 1,
+            ndims(sh_0_0) + 1
         )
     end
 
@@ -660,7 +651,8 @@ function _spherical_harmonics(
         (1 / 48) *
         sqrt(2) *
         (
-            sqrt(1122) * sh_7_10 * y - sqrt(102) * sh_7_11 * z - sqrt(102) * sh_7_3 * x - sqrt(561) * sh_7_5 * x + sqrt(561) * sh_7_9 * z
+            sqrt(1122) * sh_7_10 * y - sqrt(102) * sh_7_11 * z - sqrt(102) * sh_7_3 * x -
+            sqrt(561) * sh_7_5 * x + sqrt(561) * sh_7_9 * z
         )
     )
     sh_8_12 = (
@@ -672,7 +664,8 @@ function _spherical_harmonics(
         (1 / 80) *
         sqrt(2) *
         (
-            -sqrt(85) * sh_7_1 * x + sqrt(2210) * sh_7_11 * z + sqrt(2210) * sh_7_12 * y - sqrt(85) * sh_7_13 * z - sqrt(2210) * sh_7_3 * x
+            -sqrt(85) * sh_7_1 * x + sqrt(2210) * sh_7_11 * z + sqrt(2210) * sh_7_12 * y -
+            sqrt(85) * sh_7_13 * z - sqrt(2210) * sh_7_3 * x
         )
     )
     sh_8_14 = (
@@ -770,9 +763,9 @@ function _spherical_harmonics(
                 sh_8_13,
                 sh_8_14,
                 sh_8_15,
-                sh_8_16,
+                sh_8_16
             ],
-            ndims(sh_0_0) + 1,
+            ndims(sh_0_0) + 1
         )
     end
 
@@ -963,9 +956,9 @@ function _spherical_harmonics(
                 sh_9_15,
                 sh_9_16,
                 sh_9_17,
-                sh_9_18,
+                sh_9_18
             ],
-            ndims(sh_0_0) + 1,
+            ndims(sh_0_0) + 1
         )
     end
 
@@ -1198,9 +1191,9 @@ function _spherical_harmonics(
                 sh_10_17,
                 sh_10_18,
                 sh_10_19,
-                sh_10_20,
+                sh_10_20
             ],
-            ndims(sh_0_0) + 1,
+            ndims(sh_0_0) + 1
         )
     end
 
@@ -1466,17 +1459,16 @@ function _spherical_harmonics(
                 sh_11_19,
                 sh_11_20,
                 sh_11_21,
-                sh_11_22,
+                sh_11_22
             ],
-            ndims(sh_0_0) + 1,
+            ndims(sh_0_0) + 1
         )
     end
 
     sh_12_0 = (5 / 12) * sqrt(6) * (sh_11_0 * z + sh_11_22 * x)
-    sh_12_1 =
-        (5 / 12) * sh_11_0 * y +
-        (5 / 24) * sqrt(22) * sh_11_1 * z +
-        (5 / 24) * sqrt(22) * sh_11_21 * x
+    sh_12_1 = (5 / 12) * sh_11_0 * y +
+              (5 / 24) * sqrt(22) * sh_11_1 * z +
+              (5 / 24) * sqrt(22) * sh_11_21 * x
     sh_12_2 = (
         -5 / 552 * sqrt(46) * sh_11_0 * z +
         (5 / 138) * sqrt(253) * sh_11_1 * y +
@@ -1600,10 +1592,9 @@ function _spherical_harmonics(
         (5 / 552) * sqrt(10626) * sh_11_20 * z +
         (5 / 138) * sqrt(253) * sh_11_21 * y - 5 / 552 * sqrt(46) * sh_11_22 * z
     )
-    sh_12_23 =
-        -5 / 24 * sqrt(22) * sh_11_1 * x +
-        (5 / 24) * sqrt(22) * sh_11_21 * z +
-        (5 / 12) * sh_11_22 * y
+    sh_12_23 = -5 / 24 * sqrt(22) * sh_11_1 * x +
+               (5 / 24) * sqrt(22) * sh_11_21 * z +
+               (5 / 12) * sh_11_22 * y
     sh_12_24 = (5 / 12) * sqrt(6) * (-sh_11_0 * x + sh_11_22 * z)
 
     return stack(
@@ -1776,8 +1767,8 @@ function _spherical_harmonics(
             sh_12_21,
             sh_12_22,
             sh_12_23,
-            sh_12_24,
+            sh_12_24
         ],
-        ndims(sh_0_0) + 1,
+        ndims(sh_0_0) + 1
     )
 end

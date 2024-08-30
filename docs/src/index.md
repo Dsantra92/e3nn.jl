@@ -1,3 +1,3 @@
-# e3nn.jl
+# e3nn
 
-E(3) equivariant neural networks in Julia.
+Julia implementation of e3nn python library.
