@@ -1,8 +1,8 @@
 using Documenter, e3nn
 
 makedocs(
-    modules = [MLDatasets],
-    doctest = true,
+    modules = [e3nn],
+    doctest = false,
     clean = false,
     sitename="e3nn.jl",
     format = Documenter.HTML(
@@ -11,4 +11,9 @@ makedocs(
         prettyurls = get(ENV, "CI", nothing) == "true",
         collapselevel=3,
     ),
+        pages = ["Home" => "Index.md",
+             "API Reference" => [
+                 "o3" => "api/o3.md",
+             ],
+    ]
     )

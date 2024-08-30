@@ -54,8 +54,7 @@ function Base.:+(x1::Irrep, x2::Irrep)
     return Irreps(x1) + Irreps(x2)
 end
 
-# Used for comparison
-Base.isless(x1::Irrep, x2::Irrep) = Base.isless((x1.l, x1.p), (x2.l, x2.p)) 
+Base.isless(x1::Irrep, x2::Irrep) = Base.isless((x1.l, x1.p), (x2.l, x2.p))
 
 function Base.show(io::IO, x::Irrep)
     p = Dict(+1 => "e", -1 => "o")[x.p]
@@ -206,9 +205,6 @@ Remove any irreps with multiplicities of zero.
 """
 remove_zero_multiplicities(xs::Irreps) = [(mul, irreps) for (mul, irreps) in xs if mul > 0] |> Irreps
 
-"""
-Sort the representations.
-"""
 function Base.sort(xs::Irreps)::Irreps
     out = [(mx.irrep, i, mx.mul) for (i, mx) in enumerate(xs)]
     out = Base.sort(out)
