@@ -1,18 +1,22 @@
-using Documenter
-using e3nn
+using Documenter, e3nn
 
 mathengine = MathJax3()
-prettyurls = get(ENV, "CI", nothing) == "true"
 
-makedocs(;
-    sitename = "e3nn.jl",
+makedocs(
+    modules = [e3nn],
     doctest = false,
     clean = true,
-    format = Documenter.HTML(;
+    sitename="e3nn.jl",
+    format = Documenter.HTML(
+        canonical = "https://dsantra92.github.io/e3nn.jl/stable/",
         mathengine,
-        prettyurls,
-        # assets = assets,
-        size_threshold = nothing,
+        assets = ["assets/favicon.ico"],
+        prettyurls = get(ENV, "CI", nothing) == "true",
+        collapselevel=3,
     ),
-    pages = ["Home" => "index.md", "API Reference" => ["o3" => "api/o3.md"]],
-)
+        pages = ["Home" => "Index.md",
+             "API Reference" => [
+                 "o3" => "api/o3.md",
+             ],
+    ]
+    )
