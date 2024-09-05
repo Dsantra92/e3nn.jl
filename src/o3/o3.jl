@@ -1,7 +1,7 @@
 module o3
 
 include("irreps.jl")
-export Irrep, Irreps, dim, isscalar, spherical_harmonics, simplify
+export Irrep, Irreps, dim, isscalar, spherical_harmonics, simplify, dim, MulIrrep
 export remove_zero_multiplicities, num_irreps, ls, lmax
 # not implemented yet
 export D_from_angles, D_from_quaternion, D_from_axis_angle, D_from_matrix
@@ -21,5 +21,9 @@ export spherical_harmonics, SphericalHarmonics
 
 include("s2grid.jl")
 using .S2Grid
+export SphericalSignal
+
+include("irrepsarray.jl")
+export IrrepsArray
 
 end

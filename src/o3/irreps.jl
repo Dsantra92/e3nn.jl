@@ -11,8 +11,8 @@ struct Irrep
     end
 end
 
-function Irrep(l::T) where {T <: AbstractString}
-    name = strip(l)
+function Irrep(ir::T) where {T <: AbstractString}
+    name = strip(ir)
     try
         l = parse(Int, name[1:(end - 1)])
         (l >= 0) || throw(ArgumentError("l must be zero or positive integer, got $l"))
@@ -23,19 +23,19 @@ function Irrep(l::T) where {T <: AbstractString}
     end
 end
 
-function Irrep(l::Tuple)
-    @assert length(l) == 2
-    l, p = l
+function Irrep(ir::Tuple)
+    @assert length(ir) == 2
+    l, p = ir
     return Irrep(l, p)
 end
 
-Irrep(l::Irrep) = l
+Irrep(ir::Irrep) = ir
 
-dim(x::Irrep) = 2 * x.l + 1
+dim(ir::Irrep) = 2 * ir.l + 1
 
 isscalar(x::Irrep) = (x.l == 0) && (x.p == 1)
 
-Base.iterate(x::Irrep, args...) = iterate((x.l, x.p), args...)
+# Base.iterate(x::Irrep, args...) = iterate((x.l, x.p), args...)
 
 function Base.:*(x1::Irrep, x2::Irrep)
     p = x1.p * x2.p
@@ -48,10 +48,16 @@ function Base.:*(i::Int, x::Irrep)
     return Irreps([(i, x)])
 end
 
+# pretty solid read: https://vladium.com/tutorials/study_julia_with_me/equality_vs_identity/
+Base.:(==)(x1::Irrep, x2::Irrep) = (x1.l == x2.l) && (x1.p == x2.p)
+Base.:(==)(lhs::Irrep, rhs::Union{String, Tuple}) = lhs == Irrep(rhs)
+Base.:(==)(lhs::Union{String, Tuple}, rhs::Irrep) = Irrep(lhs) == rhs
+
 function Base.:+(x1::Irrep, x2::Irrep)
     return Irreps(x1) + Irreps(x2)
 end
 
+# Used for comparison
 Base.isless(x1::Irrep, x2::Irrep) = Base.isless((x1.l, x1.p), (x2.l, x2.p))
 
 function Base.show(io::IO, x::Irrep)
@@ -89,6 +95,7 @@ end
 dim(mx::MulIrrep) = mx.mul * dim(mx.irrep)
 
 Base.convert(::Type{Tuple}, x::MulIrrep) = (x.mul, x.irrep)
+
 struct Irreps
     irreps::Vector{MulIrrep}
 end
@@ -165,10 +172,8 @@ Base.in(x::Irrep, xs::Irreps) = x ∈ [mx.irrep for mx in xs.irreps]
 function Base.count(x::Irrep, xs::Irreps)
     sum([mx.mul for mx in xs.irreps if mx.irrep == x], init = 0)
 end
-function Base.iterate(xs::Irreps, state = 1)
-    state > length(xs) ? nothing :
-    ((xs[state].mul, (xs[state].irrep.l, xs[state].irrep.p)), state + 1)
-end
+Base.iterate(xs::Irreps, state = 1) = state > length(xs) ? nothing :
+                                      (xs[state], state + 1)
 
 """
 Representation of spherical harmonics.
@@ -215,11 +220,16 @@ Remove any irreps with multiplicities of zero.
 remove_zero_multiplicities(xs::Irreps) = [(mul, irreps) for (mul, irreps) in xs if mul > 0] |>
                                          Irreps
 
-function Base.sort(xs::Irreps)::Irreps
-    out = [(mx.irrep, i, mx.mul) for (i, mx) in enumerate(xs)]
-    out = Base.sort(out)
+"""
+Sort the representations.
+"""
+function Base.sort(xs::Irreps)
+    out = [(x.irrep, i, x.mul) for (i, x) in enumerate(xs)]
+    out = sort(out)
+    inv = [i for (_, i, _) in out]
+    p = sortperm(inv)
     sorted_irreps = Irreps([(mul, irrep) for (irrep, _, mul) in out])
-    return sorted_irreps
+    return (irreps = sorted_irreps, perm = p, inv = inv)
 end
 
 dim(xs::Irreps) = sum([mx.mul * dim(mx.irrep) for mx in xs], init = 0)
