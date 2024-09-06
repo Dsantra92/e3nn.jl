@@ -1,56 +1,41 @@
 using Random: AbstractRNG
-
 """
-    Irrep(l::Int, p::Int)
-    Irrep(s::String)
-
-Irreducible representation of ``O(3)``.
+Irrreducible representations of ``O(3)``.
 
 This struct does not contain any data; it is a structure that describes the representation.
 It is typically used as an argument in other parts of the library to define the input and output representations of
 functions.
 
-# Arguments
-- `l::Int`: non-negative integer, the degree of the representation, l = 0, 1, ...
+# Fields:
+- `l::Int`: non-negative integer, the degree of the representation, ``l = 0, 1, \\dots``
 - `p::Int`: the parity of the representation, either 1 (even) or -1 (odd)
-- `s::String`: a string representation, e.g., "1o" for l=1, odd parity
-
-# Examples
-Create a scalar representation (l=0) of even parity:
-```jldoctest
-julia> Irrep(0, 1)
-0e
-```
-
-Create a pseudotensor representation (l=2) of odd parity:
-```jldoctest
-julia> Irrep(2, -1)
-2o
-```
-
-Create a vector representation (l=1) of the parity of the spherical harmonics (-1^l gives odd parity):
-```jldoctest
-julia> Irrep("1y")
-1o
-```
-
-Other operations:
-```jldoctest
-julia> dim(Irrep("2o"))
-5
-
-julia> Irrep("2e") in Irrep("1o") * Irrep("1o")
-true
-
-julia> Irrep("1o") + Irrep("2o")
-1x1o+1x2o
-```
-
 """
 struct Irrep
     l::Int
     p::Int
 
+    @doc """
+         Irrep(l::Int, p::Int)
+
+     Instantiate a new [`o3.Irrep`](@ref) object.
+
+     # Arguments:
+     - `l::Int`: non-negative integer, the degree of the representation, ``l = 0, 1, \\dots``
+     - `p::Int`: the parity of the representation, either ``1`` (even) or ``-1`` (odd)
+
+     # Examples:
+     Create a scalar representation (``l=0``) of even parity:
+     ```jldoctest
+     julia> Irrep(0, 1)
+     0e
+     ```
+
+     Create a pseudotensor representation (``l=2``) of odd parity:
+     ```jldoctest
+     julia> Irrep(2, -1)
+     2o
+     ```
+     """
     function Irrep(l::Int, p::Int)
         (l >= 0) || throw(ArgumentError("l must be zero or positive integer, got $l"))
         (p in (-1, 1)) || throw(ArgumentError("parity(p) must be one of (-1, 1) got $p"))
@@ -58,8 +43,30 @@ struct Irrep
     end
 end
 
-function Irrep(l::T) where {T <: AbstractString}
-    name = strip(l)
+"""
+    Irrep(ir::T) where {T <: AbstractString}
+
+Instantiate a new [`o3.Irrep`](@ref) object from it's string representation.
+
+# Arguments
+- `s::String`: A string representation of the irrep.
+
+The string representation should be of the form `l` followed by "e" or "o" for even or odd parity, respectively.
+There can also be a "y" at the end, which is used to represent the parity of the spherical harmonics.
+
+- "e" for even parity, translates to `p`=1
+- "o" for odd parity, translates to `p`=-1
+- "y" for the parity of the spherical harmonics, translates to `p`=``(-1)^l``
+
+# Examples
+Create a vector representation (``l=1``) of the parity of the spherical harmonics (``-1^l``) gives odd parity):
+```jldoctest
+julia> Irrep("1y")
+1o
+```
+"""
+function Irrep(ir::T) where {T <: AbstractString}
+    name = strip(ir)
     try
         l = parse(Int, name[1:(end - 1)])
         (l >= 0) || throw(ArgumentError("l must be zero or positive integer, got $l"))
@@ -70,16 +77,23 @@ function Irrep(l::T) where {T <: AbstractString}
     end
 end
 
-function Irrep(l::Tuple)
-    @assert length(l) == 2
-    l, p = l
-    return Irrep(l, p)
-end
+"""
+    Irrep(ir::Tuple{Int, Int})
+
+Instantiate a new [`o3.Irrep`](@ref) object from a tuple of (`l`, `p`).
+"""
+Irrep(ir::Tuple{Int, Int}) = Irrep(ir...)
 
 Irrep(l::Irrep) = l
 
 dim(x::Irrep) = 2 * x.l + 1
 
+"""
+    isscalar(x::Irrep)
+
+Check if the irrep is a scalar representation.
+Equivalent to `x.l == 0 && x.p == 1`.
+"""
 isscalar(x::Irrep) = (x.l == 0) && (x.p == 1)
 
 Base.iterate(x::Irrep, args...) = iterate((x.l, x.p), args...)
@@ -271,7 +285,17 @@ Remove any irreps with multiplicities of zero.
 remove_zero_multiplicities(xs::Irreps) = [(mul, irreps) for (mul, irreps) in xs if mul > 0] |>
                                          Irreps
 
-function Base.sort(xs::Irreps)::Irreps
+"""
+    Base.sort(xs::Irreps)
+
+Sort the representations.
+
+# Examples
+```julia-repl
+julia> sort(Irreps([(1, (1, 1)), (1, (2, 1)), (1, (1, -1))]))
+```
+"""
+function Base.sort(xs::Irreps)
     out = [(mx.irrep, i, mx.mul) for (i, mx) in enumerate(xs)]
     out = Base.sort(out)
     sorted_irreps = Irreps([(mul, irrep) for (irrep, _, mul) in out])
