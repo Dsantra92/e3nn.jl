@@ -14,7 +14,7 @@ makedocs(
         assets = ["assets/favicon.ico"],
         collapselevel = 3
     ),
-    pages = ["Home" => "index.md", "API Reference" => ["o3" => "api/o3.md"]]
+    pages = ["Home" => "index.md", "API Reference" => ["Irreps" => "api/irreps.md"]]
 )
 
 deploydocs(repo = "github.com/Dsantra92/e3nn.jl.git")

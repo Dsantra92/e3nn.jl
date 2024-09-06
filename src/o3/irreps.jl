@@ -1,5 +1,52 @@
-using Random: GLOBAL_RNG, AbstractRNG
+using Random: AbstractRNG
 
+"""
+    Irrep(l::Int, p::Int)
+    Irrep(s::String)
+
+Irreducible representation of ``O(3)``.
+
+This struct does not contain any data; it is a structure that describes the representation.
+It is typically used as an argument in other parts of the library to define the input and output representations of
+functions.
+
+# Arguments
+- `l::Int`: non-negative integer, the degree of the representation, l = 0, 1, ...
+- `p::Int`: the parity of the representation, either 1 (even) or -1 (odd)
+- `s::String`: a string representation, e.g., "1o" for l=1, odd parity
+
+# Examples
+Create a scalar representation (l=0) of even parity:
+```jldoctest
+julia> Irrep(0, 1)
+0e
+```
+
+Create a pseudotensor representation (l=2) of odd parity:
+```jldoctest
+julia> Irrep(2, -1)
+2o
+```
+
+Create a vector representation (l=1) of the parity of the spherical harmonics (-1^l gives odd parity):
+```jldoctest
+julia> Irrep("1y")
+1o
+```
+
+Other operations:
+```jldoctest
+julia> dim(Irrep("2o"))
+5
+
+julia> Irrep("2e") in Irrep("1o") * Irrep("1o")
+true
+
+julia> Irrep("1o") + Irrep("2o")
+1x1o+1x2o
+```
+
+"""
 struct Irrep
     l::Int
     p::Int
@@ -11,8 +58,8 @@ struct Irrep
     end
 end
 
-function Irrep(ir::T) where {T <: AbstractString}
-    name = strip(ir)
+function Irrep(l::T) where {T <: AbstractString}
+    name = strip(l)
     try
         l = parse(Int, name[1:(end - 1)])
         (l >= 0) || throw(ArgumentError("l must be zero or positive integer, got $l"))
@@ -23,19 +70,19 @@ function Irrep(ir::T) where {T <: AbstractString}
     end
 end
 
-function Irrep(ir::Tuple)
-    @assert length(ir) == 2
-    l, p = ir
+function Irrep(l::Tuple)
+    @assert length(l) == 2
+    l, p = l
     return Irrep(l, p)
 end
 
-Irrep(ir::Irrep) = ir
+Irrep(l::Irrep) = l
 
-dim(ir::Irrep) = 2 * ir.l + 1
+dim(x::Irrep) = 2 * x.l + 1
 
 isscalar(x::Irrep) = (x.l == 0) && (x.p == 1)
 
-# Base.iterate(x::Irrep, args...) = iterate((x.l, x.p), args...)
+Base.iterate(x::Irrep, args...) = iterate((x.l, x.p), args...)
 
 function Base.:*(x1::Irrep, x2::Irrep)
     p = x1.p * x2.p
@@ -48,17 +95,13 @@ function Base.:*(i::Int, x::Irrep)
     return Irreps([(i, x)])
 end
 
-# pretty solid read: https://vladium.com/tutorials/study_julia_with_me/equality_vs_identity/
-Base.:(==)(x1::Irrep, x2::Irrep) = (x1.l == x2.l) && (x1.p == x2.p)
-Base.:(==)(lhs::Irrep, rhs::Union{String, Tuple}) = lhs == Irrep(rhs)
-Base.:(==)(lhs::Union{String, Tuple}, rhs::Irrep) = Irrep(lhs) == rhs
-
 function Base.:+(x1::Irrep, x2::Irrep)
     return Irreps(x1) + Irreps(x2)
 end
 
-# Used for comparison
-Base.isless(x1::Irrep, x2::Irrep) = Base.isless((x1.l, x1.p), (x2.l, x2.p))
+function Base.isless(x1::Irrep, x2::Irrep)
+    Base.isless((x1.l, -x1.p * (-1)^x1.l), (x2.l, -x2.p * (-1)^x2.l))
+end
 
 function Base.show(io::IO, x::Irrep)
     p = Dict(+1 => "e", -1 => "o")[x.p]
@@ -92,6 +135,9 @@ function Base.show(io::IO, mx::MulIrrep)
     print(io, s)
 end
 
+"""
+dim(x::MulIrrep)
+"""
 dim(mx::MulIrrep) = mx.mul * dim(mx.irrep)
 
 Base.convert(::Type{Tuple}, x::MulIrrep) = (x.mul, x.irrep)
@@ -168,12 +214,15 @@ Base.getindex(xs::Irreps, idx::AbstractRange) = xs.irreps[idx] |> Irreps
 Base.firstindex(xs::Irreps) = Base.firstindex(xs.irreps)
 Base.lastindex(xs::Irreps) = Base.lastindex(xs.irreps)
 
+# TODO: implement indexing by mul and dim if required
+
 Base.in(x::Irrep, xs::Irreps) = x ∈ [mx.irrep for mx in xs.irreps]
 function Base.count(x::Irrep, xs::Irreps)
     sum([mx.mul for mx in xs.irreps if mx.irrep == x], init = 0)
 end
-Base.iterate(xs::Irreps, state = 1) = state > length(xs) ? nothing :
-                                      (xs[state], state + 1)
+function Base.iterate(xs::Irreps, state = 1)
+    state > length(xs) ? nothing : (xs[state], state + 1)
+end
 
 """
 Representation of spherical harmonics.
@@ -204,7 +253,9 @@ Simplify the representaions.
 """
 function simplify(xs::Irreps)::Irreps
     out = []
-    for (mul, irrep) in xs
+    xs = Base.sort(xs)
+    for mul_ir in xs
+        mul, irrep = mul_ir.mul, mul_ir.irrep
         if length(out) != 0 && out[end][2] == irrep
             out[end] = (out[end][1] + mul, irrep)
         elseif mul > 0
@@ -220,16 +271,11 @@ Remove any irreps with multiplicities of zero.
 remove_zero_multiplicities(xs::Irreps) = [(mul, irreps) for (mul, irreps) in xs if mul > 0] |>
                                          Irreps
 
-"""
-Sort the representations.
-"""
-function Base.sort(xs::Irreps)
-    out = [(x.irrep, i, x.mul) for (i, x) in enumerate(xs)]
-    out = sort(out)
-    inv = [i for (_, i, _) in out]
-    p = sortperm(inv)
+function Base.sort(xs::Irreps)::Irreps
+    out = [(mx.irrep, i, mx.mul) for (i, mx) in enumerate(xs)]
+    out = Base.sort(out)
     sorted_irreps = Irreps([(mul, irrep) for (irrep, _, mul) in out])
-    return (irreps = sorted_irreps, perm = p, inv = inv)
+    return sorted_irreps
 end
 
 dim(xs::Irreps) = sum([mx.mul * dim(mx.irrep) for mx in xs], init = 0)
@@ -237,6 +283,39 @@ dim(xs::Irreps) = sum([mx.mul * dim(mx.irrep) for mx in xs], init = 0)
 num_irreps(xs::Irreps) = sum([mx.mul for mx in xs], init = 0)
 
 ls(xs::Irreps) = [mx.irrep.l for mx in xs for _ in 1:(mx.mul)]
+
+"""
+    Base.iterate(::Type{Irrep}, state=(0, true))
+
+Iterator through all the irreps of O(3).
+
+# Examples
+```julia-repl
+julia> first(Irrep)
+0e
+
+julia> collect(Iterators.take(Irrep, 6)) # set lmax as 6
+6-element Vector{Any}:
+ 0e
+ 0o
+ 1o
+ 1e
+ 2e
+ 2o
+```
+"""
+function Base.iterate(::Type{Irrep}, state = (0, true))
+    l, is_positive = state
+    if is_positive
+        return (Irrep(l, (-1)^l), (l, false))
+    else
+        return (Irrep(l, -(-1)^l), (l + 1, true))
+    end
+end
+
+Base.IteratorSize(::Type{Irrep}) = Base.IsInfinite()
+Base.IteratorEltype(::Type{Irrep}) = Base.HasEltype()
+Base.eltype(::Type{Irrep}) = Irrep
 
 function lmax(xs::Irreps)::Int
     if length(xs) == 0

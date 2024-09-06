@@ -31,6 +31,17 @@ using Test
         @test ir.l == 5
         @test ir.p == -1
 
+        # This is a weird way to do this,
+        # Iterators.take is a better way to do this
+        # Just wanted to test if the iterator works infinitely
+        iter = Irrep
+        for x in range(0, 500)
+            irrep, iter = Iterators.peel(iter)
+            @test irrep.l == x // 2 |> trunc
+            @test irrep.p in (-1, 1)
+            @test dim(irrep) == (2 * trunc(x // 2) + 1)
+        end
+
         irreps = Irreps("4x1e + 6x2e + 12x2o")
         @test Irreps(repr(irreps)) == irreps
     end
@@ -45,6 +56,7 @@ using Test
 
         @test 2 * Irreps("2x2e + 4x1o") == Irreps("2x2e + 4x1o + 2x2e + 4x1o")
         @test Irreps("2x2e + 4x1o") * 2 == Irreps("2x2e + 4x1o + 2x2e + 4x1o")
+        @test Irreps("2x2e + 4x1o") * 2 |> simplify == Irreps("8x1o + 4x2e") # note the ordering
     end
 
     @testset "empty" begin
@@ -54,6 +66,13 @@ using Test
         @test dim(er) == 0
         @test ls(er) == []
         @test num_irreps(er) == 0
+    end
+
+    @testset "getitem" begin
+        irreps = Irreps("16x1e + 3e + 2e + 5o")
+        @test irreps[1] == MulIrrep(16, Irrep("1e"))
+        @test irreps[4] == MulIrrep(1, Irrep("5o"))
+        @test irreps[length(irreps)] == MulIrrep(1, Irrep("5o"))
     end
 
     @testset "cat" begin
@@ -69,6 +88,21 @@ using Test
         )
         @test lmax(irreps) == 4
         @test num_irreps(irreps) == 4 + 6 + 12 + 1 + 2 + 12
+    end
+
+    @testset "ordering" begin
+        n_test = 100
+
+        last = nothing
+        for (i, irrep) in enumerate(Iterators.take(Irrep, n_test))
+            if !isnothing(last)
+                @test last < irrep
+            end
+            if i == n_test
+                break
+            end
+            last = irrep
+        end
     end
 
     @testset "contains" begin
