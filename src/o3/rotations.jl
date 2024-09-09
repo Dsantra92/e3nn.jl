@@ -1,5 +1,6 @@
 module rot
 
+using LinearAlgebra
 using Quaternions
 using Rotations
 using StaticArrays
@@ -41,14 +42,13 @@ function (::Type{Q})(R::RotMatrix3) where {Q <: Quaternion}
     return QuatRotation(R).q |> Q
 end
 
-function CartesianToSphericalAngles(x::AbstractVector{T}) where {T <: Real}
-    length(x) == 3 || error("Spherical transform takes a 3D coordinate")
+function CartesianToSphericalAngles(x::SVector{3, T}) where {T <: Real}
 
     # done in e3nn to remove NaNs
     # need to check for Julia
-    normalize!(x, p = 2)
+    normalize!(x, 2)
     clamp!(x, -1, 1)
-    return SVector(acosx[2], atan(x[1], x[3]))
+    return SVector(acos[2], atan(x[1], x[3]))
 end
 
 function SphercialAnglesToCartesian(α::Real, β::Real)

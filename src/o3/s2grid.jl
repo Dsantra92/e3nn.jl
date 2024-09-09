@@ -1,7 +1,6 @@
 module S2Grid
 
 using LinearAlgebra
-using FFTW
 using StaticArrays
 
 import Base: *, +, -, /
@@ -20,7 +19,7 @@ struct SphericalSignal{T <: AbstractArray}
                 throw(ArgumentError("Grid values should have at least 2 axes. Got grid_values of shape $(size(grid_values))."))
             end
 
-            if !(quadraturie in ["soft", "gausslegendre"])
+            if !(quadrature in ["soft", "gausslegendre"])
                 throw(ArgumentError("Invalid quadrature for SphericalSignal: $quadrature"))
             end
 

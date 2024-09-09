@@ -1,3 +1,5 @@
+using LinearAlgebra
+
 struct SphericalHarmonics
     normalize::Bool
     normalization::String
