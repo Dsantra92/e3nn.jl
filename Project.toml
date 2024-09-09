@@ -1,12 +1,14 @@
 name = "e3nn"
 uuid = "1c50a8ea-cbe2-4d3e-83e0-d59f5e8851b3"
-authors = ["Deeptendu Santra <deeptendu.santra@protonmail.com> and contributors"]
+authors = [
+    "Deeptendu Santra <deeptendu.santra@protonmail.com> and contributors",
+]
 version = "0.1.0"
 
 [deps]
 CoordinateTransformations = "150eb455-5306-5404-9cee-2592286d6298"
-FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+MLUtils = "f1d291b0-491e-4a28-83b9-f70985020b54"
 Quaternions = "94ee1d12-ae83-5a48-8b1c-48b8ff168ae0"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Rotations = "6038ab10-8711-5258-84ad-4b1120ba62dc"
