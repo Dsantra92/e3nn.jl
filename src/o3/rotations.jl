@@ -6,7 +6,6 @@ using Rotations
 using StaticArrays
 
 export Quaternion
-export RotMatrix, RotMatrix3, AngleAxis, RotYXY, QuatRotation
 export euler_angles, CartesianToSphericalAngles, SphercialAnglesToCartesian
 
 # Cross conversion

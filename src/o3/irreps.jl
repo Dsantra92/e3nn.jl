@@ -1,5 +1,11 @@
 using Random: AbstractRNG
+using Rotations
+using Rotations: params
+using Quaternions
+using BlockDiagonals: BlockDiagonal
+
 """
+using StaticArrays: AngleAxis
 Irrreducible representations of ``O(3)``.
 
 This struct does not contain any data; it is a structure that describes the representation.
@@ -15,13 +21,9 @@ struct Irrep
     p::Int
 
     @doc """
-         Irrep(l::Int, p::Int)
+         Irrep(l::Integer, p::Integer)
 
      Instantiate a new [`o3.Irrep`](@ref) object.
-
-     # Arguments:
-     - `l::Int`: non-negative integer, the degree of the representation, ``l = 0, 1, \\dots``
-     - `p::Int`: the parity of the representation, either ``1`` (even) or ``-1`` (odd)
 
      # Examples:
      Create a scalar representation (``l=0``) of even parity:
@@ -47,9 +49,6 @@ end
     Irrep(ir::T) where {T <: AbstractString}
 
 Instantiate a new [`o3.Irrep`](@ref) object from it's string representation.
-
-# Arguments
-- `s::String`: A string representation of the irrep.
 
 The string representation should be of the form `l` followed by "e" or "o" for even or odd parity, respectively.
 There can also be a "y" at the end, which is used to represent the parity of the spherical harmonics.
@@ -78,14 +77,19 @@ function Irrep(ir::T) where {T <: AbstractString}
 end
 
 """
-    Irrep(ir::Tuple{Int, Int})
+    Irrep(ir::Tuple{Integer, Integer})
 
 Instantiate a new [`o3.Irrep`](@ref) object from a tuple of (`l`, `p`).
 """
-Irrep(ir::Tuple{Int, Int}) = Irrep(ir...)
+Irrep(ir::Tuple{Integer, Integer}) = Irrep(ir...)
 
 Irrep(l::Irrep) = l
 
+"""
+    dim(x::Irreps)
+
+Returns the dimension representation of `Irreps`, ``2l+1``
+"""
 dim(x::Irrep) = 2 * x.l + 1
 
 """
@@ -98,6 +102,22 @@ isscalar(x::Irrep) = (x.l == 0) && (x.p == 1)
 
 Base.iterate(x::Irrep, args...) = iterate((x.l, x.p), args...)
 
+"""
+    Base.:*(x1::Irrep, x2::Irrep)
+
+Returns a generator from the product of 2 `Irrep`.
+
+```jldoctest
+julia> generator = Irrep("1o") * Irrep("2y");
+
+julia> collect(generator)
+3-element Vector{Irrep}:
+ 1o
+ 2o
+ 3o
+
+```
+"""
 function Base.:*(x1::Irrep, x2::Irrep)
     p = x1.p * x2.p
     lmin = abs(x1.l - x2.l)
@@ -105,7 +125,7 @@ function Base.:*(x1::Irrep, x2::Irrep)
     return (Irrep(l, p) for l in lmin:lmax)
 end
 
-function Base.:*(i::Int, x::Irrep)
+function Base.:*(i::Integer, x::Irrep)
     return Irreps([(i, x)])
 end
 
@@ -123,20 +143,46 @@ function Base.show(io::IO, x::Irrep)
     print(io, s)
 end
 
-function D_from_angles(x::Irrep, α, β, γ, k)
-    throw(error("Not Implemnted yet"))
+"""
+    wigner_D(x::Irrep, α::T, β::T, γ::T, k::T = 0.0) where {T <: Real}
+
+Returns the WingerD matrix for the given `Irrep`, euler angles(α, β, γ) and k.
+"""
+function wigner_D(x::Irrep, α::T, β::T, γ::T, k::T = 0.0) where {T <: Real}
+    return wigner_D(x.l, α, β, γ) .* x.p^k
 end
 
-function D_from_quaternion(x::Irrep, q, k)
-    throw(error("Not Implemnted yet"))
+"""
+    wigner_D(x::Irrep, q::Quaternion, k::T) where {T <: Real}
+
+Returns the WingerD matrix for the given `Irrep`, `Quaternion` and k.
+"""
+function wigner_D(x::Irrep, q::Quaternion, k::T) where {T <: Real}
+    α, β, γ = q |> QuatRotation |> RotYXY |> params
+    return wigner_D(x, α, β, γ, k)
 end
 
-function D_from_matrix(x::Irrep, R)
-    throw(error("Not Implemnted yet"))
+"""
+    wigner_D(x::Irrep, q::Quaternion, k::T) where {T <: Real}
+
+Returns the WingerD matrix for the given `Irrep`, `Rotations.RotMatrix3` and k.
+"""
+function wigner_D(x::Irrep, R::RotMatrix3{T}) where {T <: Real}
+    R = RotYXY(R)
+    d = R |> det |> sign
+    R .*= d
+    k = (1 - d) / 2
+    return wigner_D(x, params(R)..., k)
 end
 
-function D_from_matrix(x::Irrep, axis, angle)
-    throw(error("Not Implemnted yet"))
+"""
+    wigner_D(x::Irrep, q::Quaternion, k::T) where {T <: Real}
+
+Returns the WingerD matrix for the given `Irrep`, `Rotations.AngleAxis` and k.
+"""
+function wigner_D(x::Irrep, aa::AngleAxis)
+    R = RotYXY(aa)
+    return wigner_D(x, R)
 end
 
 struct MulIrrep
@@ -144,24 +190,60 @@ struct MulIrrep
     irrep::Irrep
 end
 
+MulIrrep(mul::Integer, irrep::AbstractString) = MulIrrep(mul, Irrep(irrep))
+
 function Base.show(io::IO, mx::MulIrrep)
     s = "$(mx.mul)x$(mx.irrep)"
     print(io, s)
 end
 
-"""
-dim(x::MulIrrep)
-"""
 dim(mx::MulIrrep) = mx.mul * dim(mx.irrep)
 
-Base.convert(::Type{Tuple}, x::MulIrrep) = (x.mul, x.irrep)
+Base.:(==)(x1::MulIrrep, x2::Tuple) = (x1.mul == x2[1]) && (x1.irrep == x2[2])
 
+"""
+    Irreps
+
+Direct sum of irreducible representations of ``O(3)``.
+
+This struct does not contain any data, it is a structure that describes the representation.
+It is typically used as an argument of other types in the library to define the input and output representations of
+functions.
+
+# Examples
+```jldoctest
+# Create a representation of 100 l=0 of even parity and 50 pseudo-vectors.
+julia> x = Irreps([(100, (0, 1)), (50, (1, 1))])
+100x0e+50x1e
+
+julia> dim(x)
+250
+
+# Create a representation of 100 l=0 of even parity and 50 pseudo-vectors.
+julia> Irreps("100x0e + 50x1e")
+100x0e+50x1e
+
+julia> Irreps("100x0e + 50x1e + 0x2e")
+100x0e+50x1e+0x2e
+
+julia> Irreps("100x0e + 50x1e + 0x2e") |> lmax
+1
+
+julia> Irrep("2e") in Irreps("0e + 2e")
+true
+
+# Empty Irreps
+julia> Irreps(), Irreps("")
+(, )
+```
+"""
 struct Irreps
     irreps::Vector{MulIrrep}
 end
 
 Irreps(irrep::Irrep) = Irreps([MulIrrep(1, irrep)])
 Irreps(irreps::Irreps) = irreps
+Irreps() = Irreps([])
 
 function Irreps(irreps::T) where {T <: AbstractString}
     mulirreps = MulIrrep[]
@@ -218,12 +300,12 @@ end
 
 Base.:(==)(x1::Irreps, x2::Irreps) = x1.irreps == x2.irreps
 Base.:+(x1::Irreps, x2::Irreps) = Irreps(vcat(x1.irreps, x2.irreps))
-Base.:*(i::Int, xs::Irreps) = Irreps(repeat(xs.irreps, i))
-Base.:*(xs::Irreps, i::Int) = Base.:*(i::Int, xs::Irreps)
+Base.:*(i::Integer, xs::Irreps) = Irreps(repeat(xs.irreps, i))
+Base.:*(xs::Irreps, i::Integer) = Base.:*(i::Integer, xs::Irreps)
 
 Base.length(xs::Irreps) = length(xs.irreps)
 
-Base.getindex(xs::Irreps, i::Int) = xs.irreps[i]
+Base.getindex(xs::Irreps, i::Integer) = xs.irreps[i]
 Base.getindex(xs::Irreps, idx::AbstractRange) = xs.irreps[idx] |> Irreps
 Base.firstindex(xs::Irreps) = Base.firstindex(xs.irreps)
 Base.lastindex(xs::Irreps) = Base.lastindex(xs.irreps)
@@ -237,37 +319,48 @@ end
 function Base.iterate(xs::Irreps, state = 1)
     state > length(xs) ? nothing : (xs[state], state + 1)
 end
+"""
+    multiplicity(xs::Irreps, ir::Irrep)
+
+Multiplicity of the given `Irrep` in the `Irreps`.
+"""
+multiplicity(xs::Irreps, ir::Irrep) = [mul for (; mul, irrep) in xs if irrep == ir] |> sum
 
 """
-Representation of spherical harmonics.
+    spherical_harmonics(lmax::Integer, p::Integer = -1)
+
+Representation of spherical harmonics for given `lmax` and parity.
+
+# Examples
+```jldocket
+julia> spherical_harmonics(3)
+1x0e+1x1o+1x2e+1x3o
+
+julia> spherical_harmonics(4, p=1)
+1x0e+1x1e+1x2e+1x3e+1x4e
+```
 """
-function spherical_harmonics(lmax::Int, p::Int = -1)::Irreps
+function spherical_harmonics(lmax::Integer, p::Integer = -1)
     return Irreps([(1, (l, p^l)) for l in 1:lmax])
 end
 
-function Base.randn(
-        xs::Irreps,
-        dims,
-        normalization::String,
-        rng::AbstractRNG,
-        ::Type{T}
-) where {T <: Number}
-    di = dims[end]
-    lsize = dims[:di]
-    rsize = dims[di + 1 :]
-
-    if normalization == "component"
-        return randn(rng, T, lsize..., dim(xs), rsize...)
-        # implement the norm
-    end
-end
-
 """
+    simplify(xs::Irreps)
+
 Simplify the representaions.
+Simplify does not sort the representations, so equivalent representations which
+are separated from each other are not combined.
+Use `regroup`(@ref) instead for such use cases.
+
+# Examples
+julia> Irreps("1e + 1e + 0e") |> simplify
+2x1e+1x0e
+
+>>> Irreps("1e + 1e + 0e + 1e") |> simplify # no sorting
+2x1e+1x0e+1x1e
 """
 function simplify(xs::Irreps)::Irreps
     out = []
-    xs = Base.sort(xs)
     for mul_ir in xs
         mul, irrep = mul_ir.mul, mul_ir.irrep
         if length(out) != 0 && out[end][2] == irrep
@@ -280,9 +373,61 @@ function simplify(xs::Irreps)::Irreps
 end
 
 """
-Remove any irreps with multiplicities of zero.
+    unify(self::Irreps)
+
+Regroup same irreps together.
+
+# Examples
+```jldoctest
+julia> unify(Irreps("0e + 1e"))
+1x0e+1x1e
+
+julia> xs = Irreps("0e + 1e + 1e")
+
+julia> unify(xs)
+1x0e+2x1e
+
+julia> unify(Irreps("0e + 0x1e + 0e"))
+1x0e+0x1e+1x0e
+```
 """
-remove_zero_multiplicities(xs::Irreps) = [(mul, irreps) for (mul, irreps) in xs if mul > 0] |>
+function unify(xs::Irreps)
+    out = Tuple{Int, Irrep}[]
+    for (; mul, irrep) in xs
+        if !isempty(out) && out[end][2] == irrep
+            out[end] = (out[end][1] + mul, irrep)
+        else
+            push!(out, (mul, irrep))
+        end
+    end
+    return Irreps(out)
+end
+
+"""
+    regroup(xs::Irreps)
+
+Regroup the same irrep together.
+Equivalent to `sort` followed by `simplify`.
+
+# Examples
+julia> Irreps("1e + 0e + 1e + 0x2e") |> regroup
+1x0e+2x1e
+
+"""
+regroup(xs::Irreps) = xs |> sort |> simplify
+
+"""
+    remove_zero_multiplicities(xs::Irreps)
+
+Remove any irreps with multiplicities of zero.
+# Examples
+```jldoctest
+julia> Irreps("4x0e + 0x1o + 2x3e") |> remove_zero_multiplicities
+4x0e+2x3e
+```
+"""
+remove_zero_multiplicities(xs::Irreps) = [(mul, irrep)
+                                          for (; mul, irrep) in xs if mul > 0] |>
                                          Irreps
 
 """
@@ -291,8 +436,9 @@ remove_zero_multiplicities(xs::Irreps) = [(mul, irreps) for (mul, irreps) in xs 
 Sort the representations.
 
 # Examples
-```julia-repl
+```jldoctest
 julia> sort(Irreps([(1, (1, 1)), (1, (2, 1)), (1, (1, -1))]))
+1x1o+1x1e+1x2e
 ```
 """
 function Base.sort(xs::Irreps)
@@ -341,25 +487,43 @@ Base.IteratorSize(::Type{Irrep}) = Base.IsInfinite()
 Base.IteratorEltype(::Type{Irrep}) = Base.HasEltype()
 Base.eltype(::Type{Irrep}) = Irrep
 
-function lmax(xs::Irreps)::Int
+"""
+    lmax(xs::Irreps)
+
+Returns the maximum value of l in the Irreps.
+
+# Examples
+```
+julia> Irreps("3x0e + 2x1e") |> lmax
+1
+
+"""
+function lmax(xs::Irreps)
     if length(xs) == 0
         throw(ArgumentError("Cannot get lmax of empty Irreps"))
     end
     return maximum(ls(xs))
 end
 
-function D_from_angles(xs::Irreps, α, β, γ, k)
-    throw(error("Not Implemnted yet"))
+function wigner_D(xs::Irreps, α::T, β::T, γ::T, k::T = 0.0) where {T <: Real}
+    return BlockDiagonal([wigner_D(irrep, α, β, γ, k) for (; mul, irrep) in xs
+                          for _ in 1:mul])
 end
 
-function D_from_quaternion(xs::Irreps, q, k)
-    throw(error("Not Implemnted yet"))
+function wigner_D(xs::Irreps, q::Quaternion, k::T) where {T <: Real}
+    α, β, γ = q |> QuatRotation |> RotYXY |> params
+    return wigner_D(xs, α, β, γ, k)
 end
 
-function D_from_matrix(xs::Irreps, R)
-    throw(error("Not Implemnted yet"))
+function wigner_D(xs::Irreps, R::RotMatrix3{T}) where {T <: Real}
+    R = RotYXY(R)
+    d = R |> det |> sign
+    R .*= d
+    k = (1 - d) / 2
+    return wigner_D(xs, params(R)..., k)
 end
 
-function D_from_axis_angle(xs::Irreps, axis, angle)
-    throw(error("Not Implemnted yet"))
+function wigner_D(xs::Irreps, aa::AngleAxis)
+    R = RotYXY(aa)
+    return wigner_D(xs, R)
 end

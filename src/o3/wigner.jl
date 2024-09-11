@@ -1,5 +1,6 @@
 using LinearAlgebra
 using StaticArrays
+using Quaternions
 
 function su2_generators(j::Int)
     m = range(-j, j - 1, step = 1)
@@ -56,4 +57,4 @@ function wigner_D(l::Int, angles::SVector{3, T}) where {T <: Real}
     return wigner_D(l, angles[1], angles[2], angles[3])
 end
 
-Broadcast.broadcast(::typeof(wigner_D), l, α, β, γ) = broadcast(wigner_D, Ref(l), α, β, γ)
+Broadcast.broadcast(::typeof(wigner_D), l, args...) = broadcast(wigner_D, Ref(l), args...)
