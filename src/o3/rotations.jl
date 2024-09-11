@@ -1,5 +1,3 @@
-module rot
-
 using LinearAlgebra
 using Quaternions
 using Rotations
@@ -55,6 +53,4 @@ function SphercialAnglesToCartesian(α::Real, β::Real)
     sβ, cβ = sincos(β)
     sα, cα = sincos(α)
     return SVector(sβ * sα, cβ, sβ * cα)
-end
-
 end
