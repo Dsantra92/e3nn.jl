@@ -1,5 +1,4 @@
-##  Irreducible Representation
-
+## Irreducible Representation
 
 ```@autodocs
 Modules = [e3nn.o3 ]
@@ -9,4 +8,6 @@ Private = false
 
 ```@docs
 Base.iterate
+Base.:*
+Base.sort
 ```

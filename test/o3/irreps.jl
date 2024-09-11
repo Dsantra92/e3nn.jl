@@ -56,7 +56,7 @@ using Test
 
         @test 2 * Irreps("2x2e + 4x1o") == Irreps("2x2e + 4x1o + 2x2e + 4x1o")
         @test Irreps("2x2e + 4x1o") * 2 == Irreps("2x2e + 4x1o + 2x2e + 4x1o")
-        @test Irreps("2x2e + 4x1o") * 2 |> simplify == Irreps("8x1o + 4x2e") # note the ordering
+        @test Irreps("2x2e + 4x1o") * 2 |> regroup == Irreps("8x1o + 4x2e") # note the ordering
     end
 
     @testset "empty" begin
@@ -103,6 +103,26 @@ using Test
             end
             last = irrep
         end
+    end
+
+    @testset "empty" begin
+        @test Irreps() == Irreps("")
+        @test Irreps("") == Irreps([])
+        @test length(o3.Irreps()) == 0
+        @test dim(Irreps()) == 0
+        @test ls(Irreps()) == []
+        @test num_irreps(Irreps()) == 0
+    end
+
+    @testset "getitem" begin
+        irreps = Irreps("16x1e + 3e + 2e + 5o")
+        @test irreps[1] == (16, Irrep("1e"))
+        @test irreps[4] == (1, Irrep("5o"))
+        @test irreps[end] == (1, Irrep("5o"))
+
+        sliced = irreps[3:end]
+        @test sliced isa Irreps
+        @test sliced == Irreps("2e + 5o")
     end
 
     @testset "contains" begin

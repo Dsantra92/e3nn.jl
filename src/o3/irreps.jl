@@ -356,7 +356,7 @@ Use `regroup`(@ref) instead for such use cases.
 julia> Irreps("1e + 1e + 0e") |> simplify
 2x1e+1x0e
 
->>> Irreps("1e + 1e + 0e + 1e") |> simplify # no sorting
+julia> Irreps("1e + 1e + 0e + 1e") |> simplify # no sorting
 2x1e+1x0e+1x1e
 """
 function simplify(xs::Irreps)::Irreps
@@ -448,10 +448,49 @@ function Base.sort(xs::Irreps)
     return sorted_irreps
 end
 
+"""
+    dim(xs::Irreps)
+
+Dimension of the irreps.
+# Examples:
+```
+julia> Irreps("3x0e + 2x1e") |> dim
+9
+```
+"""
 dim(xs::Irreps) = sum([mx.mul * dim(mx.irrep) for mx in xs], init = 0)
 
+"""
+    num_irreps(xs::Irreps)
+
+Sum of the multiplicities.
+
+# Examples:
+```
+julia> Irreps("3x0e + 2x1e") |> num_irreps
+5
+
+```
+"""
 num_irreps(xs::Irreps) = sum([mx.mul for mx in xs], init = 0)
 
+"""
+    ls(xs::Irreps)
+
+List of the l values.
+
+# Examples:
+```jldoctest
+julia> Irreps("3x0e + 2x1e") |> ls
+5-element Vector{Int64}:
+ 0
+ 0
+ 0
+ 1
+ 1
+
+```
+"""
 ls(xs::Irreps) = [mx.irrep.l for mx in xs for _ in 1:(mx.mul)]
 
 """
@@ -493,10 +532,10 @@ Base.eltype(::Type{Irrep}) = Irrep
 Returns the maximum value of l in the Irreps.
 
 # Examples
-```
+```jldoctest
 julia> Irreps("3x0e + 2x1e") |> lmax
 1
-
+```
 """
 function lmax(xs::Irreps)
     if length(xs) == 0
