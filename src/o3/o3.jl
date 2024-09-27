@@ -6,11 +6,8 @@ export remove_zero_multiplicities, num_irreps, ls, lmax
 # not implemented yet
 export D_from_angles, D_from_quaternion, D_from_axis_angle, D_from_matrix
 
-include("irrepsarray.jl")
-export IrrepsArray
-
 include("wigner.jl")
-export so3_generators, su2_generators, wigner_D
+export clebsch_gordan, so3_generators, su2_generators, wigner_D
 
 include("rotations.jl")
 using .rot
