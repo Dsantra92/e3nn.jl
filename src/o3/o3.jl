@@ -5,11 +5,8 @@ export Irrep, Irreps, dim, isscalar, spherical_harmonics, simplify, dim, MulIrre
 export remove_zero_multiplicities, num_irreps, ls, lmax, wigner_D, multiplicity, unify,
        regroup
 
-include("irrepsarray.jl")
-export IrrepsArray
-
 include("wigner.jl")
-export so3_generators, su2_generators, wigner_D
+export clebsch_gordan, so3_generators, su2_generators, wigner_D
 
 # include("rotations.jl")
 # using .rot
