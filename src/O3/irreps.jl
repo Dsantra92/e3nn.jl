@@ -149,21 +149,21 @@ struct MulIrrep{T}
     ir::Irrep{T}
 end
 
-Base.show(io::IO, mulir::MulIrrep) = print(io, "$(mulir.mul)x$(mulir.ir)")
+Base.show(io::IO, mul_ir::MulIrrep) = print(io, "$(mul_ir.mul)x$(mul_ir.ir)")
 
 Base.isless(a::MulIrrep, b::MulIrrep) = isless((a.ir, a.mul), (b.ir, b.mul))
 
-function Base.iterate(mulir::MulIrrep, state::Int = 1)
+function Base.iterate(mul_ir::MulIrrep, state::Int = 1)
     if state == 1
-        return (mulir.mul, 2);
+        return (mul_ir.mul, 2);
     elseif state == 2
-        return (mulir.ir, 3);
+        return (mul_ir.ir, 3);
     else
         return nothing;
     end
 end
 
-dim(mulir::MulIrrep) = mulir.mul * dim(mulir.ir)
+dim(mul_ir::MulIrrep) = mul_ir.mul * dim(mul_ir.ir)
 
 """
     Irreps
@@ -191,7 +191,7 @@ julia> Irreps("100x0e + 50x1e + 0x2e")
 julia> Irreps("100x0e + 50x1e + 0x2e") |> lmax
 1
 
-julia> Irrep("2e") in Irreps("0e + 2e")
+julia> Irrep("2e") in irs("0e + 2e")
 true
 
 # Empty Irreps
@@ -202,6 +202,12 @@ julia> Irreps(), Irreps("")
 struct Irreps{T}
     _irreps::Tuple{Vararg{MulIrrep{T}}}
 end
+
+Irreps(ir::Irrep{T}) where {T} = Irreps((MulIrrep(1, ir),))
+Irreps(mul_ir::MulIrrep{T}) where {T} = Irreps((mul_ir,))
+Irreps(mul_ir::Tuple{Int, Irrep{T}}) where {T} = Irreps((MulIrrep(mulir...),))
+Irreps() = Irreps{Int}(tuple()) # Default to Int for empty constructor
+Irreps(irs::Irreps{T}) where {T} = irs
 
 function Irreps(irs::AbstractString)
     _irs = strip(irs)
@@ -230,12 +236,21 @@ function Irreps(irs::Union{Vector, Tuple})
 
     # potentially mixed types
     initial_list = map(irs) do x
-        if x isa MulIrrep
+        if typeof(x) <: AbstractString
+            # fix case for mixture of irrep and irrpes in a vector
+            # if occursin("+", mul_irrep)
+            #     irreps = Irreps(mul_irrep)
+            # end
+            MulIrrep(1, Irrep(x))
+        elseif x isa MulIrrep
             x
         elseif x isa Tuple{Int, Irrep}
             MulIrrep(x...)
         elseif x isa Irrep
             MulIrrep(1, x)
+        elseif length(x) == 2
+            mul, ir = x
+            MulIrrep(mul, Irrep(ir))
         else
             throw(ArgumentError("Invalid type in list for Irreps constructor: $(typeof(x))"))
         end
@@ -253,98 +268,100 @@ function Irreps(irs::Union{Vector, Tuple})
     return Irreps(tuple(final_list...))
 end
 
-function Base.show(io::IO, irreps::Irreps)
-    isempty(irreps._irreps) && return print(io, "")
-    print(io, join(string.(irreps._irreps), "+"))
+function Base.show(io::IO, irs::Irreps)
+    isempty(irs._irreps) && return print(io, "")
+    print(io, join(string.(irs._irreps), "+"))
 end
 
-Base.iterate(irreps::Irreps, args...) = iterate(irreps._irreps, args...)
-Base.getindex(irreps::Irreps, i) = getindex(irreps._irreps, i)
-Base.length(irreps::Irreps) = length(irreps._irreps)
-Base.eltype(irreps::Irreps) = eltype(irreps._irreps)
-function Base.in(ir::Irrep, irreps::Irreps)
-    any(mul_ir -> mul_ir.ir == ir, irreps.irreps)
+Base.iterate(irs::Irreps, args...) = iterate(irs._irreps, args...)
+Base.getindex(irs::Irreps, i) = getindex(irs._irreps, i)
+Base.length(irs::Irreps) = length(irs._irreps)
+Base.eltype(irs::Irreps) = eltype(irs._irreps)
+function Base.in(ir::Irrep, irs::Irreps)
+    any(mul_ir -> mul_ir.ir == ir, irs._irreps)
 end
 
 function Base.:+(a::Irreps, b::Irreps)
-    return regroup(Irreps((a.irreps..., b.irreps...)))
+    return Irreps((a._irreps..., b._irreps...))
 end
 
-function Base.:*(n::Integer, irreps::Irreps)
+function Base.:*(n::Integer, irs::Irreps)
     @assert n >= 0 "Multiplicity must be non-negative."
-    return Irreps(tuple([MulIrrep(n * mulir.mul, mulir.ir) for mulir in irreps]...))
+    return Irreps(tuple([MulIrrep(n * mul_ir.mul, mul_ir.ir) for mul_ir in irs]...))
 end
 
-Base.:*(irreps::Irreps, n::Integer) = n * irreps # Commutativity
+Base.:*(irs::Irreps, n::Integer) = n * irs # Commutativity
 
 function Base.:*(n::Integer, ir::Irrep)
     @assert n >= 0 "Multiplicity must be non-negative."
     return Irreps((MulIrrep(n, ir),))
 end
 
-function Base.div(irreps::Irreps, n::Integer)
-    Irreps(tuple([MulIrrep(div(mulir.mul, mulir.ir), mulir.ir)
-                  for mulir in irreps]...))
+Base.:+(ir1::Irrep, ir2::Irrep) = Irreps(ir1) + Irreps(ir2)
+
+function Base.div(irs::Irreps, n::Integer)
+    Irreps(tuple([MulIrrep(div(mul_ir.mul, mul_ir.ir), mul_ir.ir)
+                  for mul_ir in irs]...))
 end
-function Base.fld(irreps::Irreps, n::Integer)
-    Irreps(tuple([MulIrrep(fld(mulir.mul, n), mulir.ir) for mulir in irreps]...))
+function Base.fld(irs::Irreps, n::Integer)
+    Irreps(tuple([MulIrrep(fld(mul_ir.mul, n), mul_ir.ir) for mul_ir in irs]...))
 end
 
-dim(irreps::Irreps) = sum(dim, irreps.irreps; init = 0)
-num_irreps(irreps::Irreps) = sum(x -> x.mul, irreps.irreps; init = 0)
-ls(irreps::Irreps) = [mulir.ir.l for mulir in irreps for _ in 1:mulir.mul]
-function lmax(irreps::Irreps)
-    isempty(irreps.irreps) ? -1 : maximum(x -> x.ir.l, irreps.irreps)
+dim(irs::Irreps) = sum(dim, irs._irreps; init = 0)
+num_irreps(irs::Irreps) = sum(x -> x.mul, irs._irreps; init = 0)
+ls(irs::Irreps) = [mul_ir.ir.l for mul_ir in irs for _ in 1:mul_ir.mul]
+function lmax(irs::Irreps)
+    isempty(irs._irreps) ? -1 : maximum(x -> x.ir.l, irs._irreps)
 end
-function count(ir::Irrep, irreps::Irreps)
-    sum(mulir.mul for mulir in irreps if mulir.ir == ir; init = 0)
+function count(ir::Irrep, irs::Irreps)
+    sum(mul_ir.mul for mul_ir in irs if mul_ir.ir == ir; init = 0)
 end
-function isscalar(irreps::Irreps)
-    all(mulir -> mulir.ir.l == 0 && mulir.ir.p == 1, irreps.irreps)
+function isscalar(irs::Irreps)
+    all(mul_ir -> mul_ir.ir.l == 0 && mul_ir.ir.p == 1, irs._irreps)
 end
-function mul_gcd(irreps::Irreps)
-    isempty(irreps.irreps) ? 0 : gcd(x -> x.mul, irreps.irreps)
-end
-
-function Base.repeat(irreps::Irreps, n::Integer)
-    Irreps(tuple(repeat(collect(irreps.irreps), n)...))
+function mul_gcd(irs::Irreps)
+    isempty(irs._irreps) ? 0 : gcd(x -> x.mul, irs._irreps)
 end
 
-function remove_zero_multiplicities(irreps::Irreps)
-    Irreps(tuple([mulir for mulir in irreps if mulir.mul > 0]...))
+function Base.repeat(irs::Irreps, n::Integer)
+    Irreps(tuple(repeat(collect(irs._irreps), n)...))
+end
+
+function remove_zero_multiplicities(irs::Irreps)
+    Irreps(tuple([mul_ir for mul_ir in irs if mul_ir.mul > 0]...))
 end
 
 function unify(irs::Irreps)
     out = Vector{MulIrrep}{eltype(irs)}()
-    for mulir in irreps
-        if !isempty(out) && last(out).ir == mulir.ir
-            out[end] = MulIrrep(last(out).mul + mulir.mul, mulir.ir)
+    for mul_ir in irs
+        if !isempty(out) && last(out).ir == mul_ir.ir
+            out[end] = MulIrrep(last(out).mul + mul_ir.mul, mul_ir.ir)
         else
-            push!(out, mulir)
+            push!(out, mul_ir)
         end
     end
     return Irreps(tuple(out...))
 end
 
-simplify(irreps::Irreps) = unify(remove_zero_multiplicities(irreps))
+simplify(irs::Irreps) = unify(remove_zero_multiplicities(irs))
 
-function regroup(irreps::Irreps)
+function regroup(irs::Irreps)
     counts = Dict{Irrep, Int}()
-    for mulir in irreps
-        counts[mulir.ir] = get(counts, mulir.ir, 0) + mulir.mul
+    for mul_ir in irs
+        counts[mul_ir.ir] = get(counts, mul_ir.ir, 0) + mul_ir.mul
     end
     sorted_irreps = sort(collect(keys(counts)))
     return Irreps(tuple([MulIrrep(counts[ir], ir)
                          for ir in sorted_irreps if counts[ir] > 0]...))
 end
 
-function Base.sort(irreps::Irreps)
+function Base.sort(irs::Irreps)
     v = collect(irs._irreps)
     p = sortperm(v)
     inv_p = invperm(p)
     return Irreps(tuple(v[p]...))
 end
 
-function Base.filter(f::Function, irreps::Irreps)
-    return Irreps(tuple([x for x in irreps if f(x)]...))
+function Base.filter(f::Function, irs::Irreps)
+    return Irreps(tuple([x for x in irs if f(x)]...))
 end

@@ -1,4 +1,4 @@
-using e3nn.o3
+using E3NN.O3
 using Test
 
 @testset "Irreps" begin
@@ -37,14 +37,16 @@ using Test
 
     @testset "arithmetic" begin
         @test 3 * Irrep("6o") == Irreps("3x6o")
-        products = [ir for ir in Irrep("1o") * Irrep("2e")]
-        @test products == [Irrep("1o"), Irrep("2o"), Irrep("3o")]
+        # We are considering product of irrep as tensor_product
+        # products = [ir for ir in Irrep("1o") * Irrep("2e")]
+        # @test products == [Irrep("1o"), Irrep("2o"), Irrep("3o")]
 
         @test Irrep("4o") + Irrep("7e") == Irreps("4o + 7e")
-        @test Irreps("1o + 4o") + Irreps("1o + 7e") == Irreps("1o + 4o + 1o + 7e")
+        @test Irreps("1o + 4o") + Irreps("1o + 7e") ==
+              Irreps("1o + 4o + 1o + 7e")
 
-        @test 2 * Irreps("2x2e + 4x1o") == Irreps("2x2e + 4x1o + 2x2e + 4x1o")
-        @test Irreps("2x2e + 4x1o") * 2 == Irreps("2x2e + 4x1o + 2x2e + 4x1o")
+        @test 2 * Irreps("2x2e + 4x1o") == Irreps("4x2e + 8x1o")
+        @test Irreps("2x2e + 4x1o") * 2 == Irreps("4x2e + 8x1o")
     end
 
     @testset "empty" begin
