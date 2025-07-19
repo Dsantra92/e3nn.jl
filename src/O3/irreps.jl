@@ -1,3 +1,5 @@
+import Base.Iterators
+
 """
 Irrreducible representations of ``O(3)``.
 
@@ -124,6 +126,23 @@ Check if the irrep is a scalar representation.
 Equivalent to `x.l == 0 && x.p == 1`.
 """
 isscalar(x::Irrep) = (x.l == 0) && (x.p == 1)
+
+function iterator(::Type{Irrep}; lmax::Union{Int, Nothing} = nothing)
+    return Channel{Irrep}() do ch
+        for l in 0:typemax(Int)
+            p1 = (-1)^l
+            put!(ch, Irrep(l, p1))
+            put!(ch, Irrep(l, -p1))
+            if !isnothing(lmax) && l == lmax
+                break
+            end
+        end
+    end
+end
+
+function (T::Type{Irrep})(; lmax::Union{Int, Nothing} = nothing)
+    iterator(T; lmax = lmax)
+end
 
 struct MulIrrep{T}
     mul::Int # might reconsider using T here, but not sure if it's worth the constraint
