@@ -28,11 +28,14 @@ function (::Type{Q})(; α::Real, β::Real, γ::Real) where {Q <: Quaternion}
     return QuatRotation(RotYXY(promote(α, β, γ)...)).q |> Q
 end
 
-function euler_angles(x::T) where {T <: Union{QuatRotation, RotMatrix3, AngleAxis}}
+function euler_angles(x::T) where {T <:
+                                   Union{QuatRotation, RotMatrix3, AngleAxis}}
     Rotations.params(RotYXY(x))
 end
 
-euler_angles(q::Q) where {Q <: Quaternion} = euler_angles(QuatRotation(q, false))
+function euler_angles(q::Q) where {Q <: Quaternion}
+    euler_angles(QuatRotation(q, false))
+end
 
 function (::Type{R})(q::Quaternion) where {R <: RotMatrix3}
     QuatRotation(q) |> R
@@ -44,7 +47,7 @@ end
 
 function CartesianToSphericalAngles(x::SVector{3, T}) where {T <: Real}
 
-    # done in e3nn to remove NaNs
+    # done in E3NN to remove NaNs
     # need to check for Julia
     normalize!(x, 2)
     clamp!(x, -1, 1)

@@ -47,7 +47,8 @@ function Base.show(io::IO, s::SphericalSignal)
 end
 
 function *(s::SphericalSignal, scalar::Number)
-    SphericalSignal(s.grid_values * scalar, s.quadrature, p_val = s.p_val, p_arg = s.p_arg)
+    SphericalSignal(
+        s.grid_values * scalar, s.quadrature, p_val = s.p_val, p_arg = s.p_arg)
 end
 *(scalar::Number, s::SphericalSignal) = s * scalar
 /(s::SphericalSignal, scalar::Number) = s * (1 / scalar)

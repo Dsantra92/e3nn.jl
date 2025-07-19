@@ -8,7 +8,7 @@ struct SphericalHarmonics
     _is_range_lmax::Bool
 
     function SphericalHarmonics(
-            irreps_out::Union{AbstractVector{Int}, o3.Irreps},
+            irreps_out::Union{AbstractVector{Int}, O3.Irreps},
             normalize::Bool,
             normalization::String,
             irreps_in
@@ -18,15 +18,15 @@ struct SphericalHarmonics
         if irreps_out isa Irreps && isnothing(irreps_in)
             for (mul, (l, p)) in irreps_out
                 if l % 2 == 1 & p == 1
-                    irreps_in = o3.Irreps("1e")
+                    irreps_in = O3.Irreps("1e")
                 end
             end
         end
         if isnothing(irreps_in)
-            irreps_in = o3.Irreps("1o")
+            irreps_in = O3.Irreps("1o")
         end
-        irreps_in = o3.Irreps(irreps_in)
-        if !(irreps_in in (o3.Irreps("1x1o"), o3.Irreps("1x1e")))
+        irreps_in = O3.Irreps(irreps_in)
+        if !(irreps_in in (O3.Irreps("1x1o"), O3.Irreps("1x1e")))
             throw(
                 ArgumentError(
                 "irreps_in for SphericalHarmonics must be either a vector (`1x1o`) or a pseudovector (`1x1e`), not `$(irreps_in)`",
@@ -34,7 +34,7 @@ struct SphericalHarmonics
             )
         end
         input_p = irreps_in[1].irrep.p
-        if irreps_out isa o3.Irreps
+        if irreps_out isa O3.Irreps
             ls = []
             for (mul, (l, p)) in irreps_out
                 if p != input_p^l
@@ -49,15 +49,16 @@ struct SphericalHarmonics
         else
             ls = Vector(irreps_out)
         end
-        irreps_out = o3.Irreps([(1, (l, input_p^l)) for l in ls])
-        irreps_out = o3.simplify(irreps_out)
+        irreps_out = O3.Irreps([(1, (l, input_p^l)) for l in ls])
+        irreps_out = O3.simplify(irreps_out)
         lmax = maximum(ls)
         _lmax = 11
         if lmax > _lmax
             throw(ErrorException("spherical_harmonics maximum l implemented is $_lmax."))
         end
 
-        return new(normalize, normalization, ls, lmax, ls == collect(range(0, maximum(ls))))
+        return new(normalize, normalization, ls, lmax,
+            ls == collect(range(0, maximum(ls))))
     end
 end
 
@@ -67,8 +68,9 @@ function SphericalHarmonics(
         normalization::String,
         irreps_in::Any
 )
-    irreps_out_rep = o3.Irreps(irreps_out)
-    return SphericalHarmonics(irreps_out_rep, normalize, normalization, irreps_in)
+    irreps_out_rep = O3.Irreps(irreps_out)
+    return SphericalHarmonics(
+        irreps_out_rep, normalize, normalization, irreps_in)
 end
 
 function (sh::SphericalHarmonics)(x::AbstractArray)
@@ -88,7 +90,8 @@ function (sh::SphericalHarmonics)(x::AbstractArray)
     if sh.normalization == "integral"
         sh_matrix /= sqrt(4 * pi)
     elseif sh.normalization == "norm"
-        sh_matrix /= cat([sqrt(2 * l + 1) * ones(2 * l + 1) for l in sh._ls_list])
+        sh_matrix /= cat([sqrt(2 * l + 1) * ones(2 * l + 1)
+                          for l in sh._ls_list])
     end
 
     return sh_matrix
@@ -123,7 +126,8 @@ function _spherical_harmonics(
 
     if lmax == 2
         return stack(
-            [sh_0_0, sh_1_0, sh_1_1, sh_1_2, sh_2_0, sh_2_1, sh_2_2, sh_2_3, sh_2_4],
+            [sh_0_0, sh_1_0, sh_1_1, sh_1_2, sh_2_0,
+                sh_2_1, sh_2_2, sh_2_3, sh_2_4],
             dims = ndims(sh_0_0) + 1
         )
     end
@@ -653,7 +657,8 @@ function _spherical_harmonics(
         (1 / 48) *
         sqrt(2) *
         (
-            sqrt(1122) * sh_7_10 * y - sqrt(102) * sh_7_11 * z - sqrt(102) * sh_7_3 * x -
+            sqrt(1122) * sh_7_10 * y - sqrt(102) * sh_7_11 * z -
+            sqrt(102) * sh_7_3 * x -
             sqrt(561) * sh_7_5 * x + sqrt(561) * sh_7_9 * z
         )
     )
@@ -666,14 +671,16 @@ function _spherical_harmonics(
         (1 / 80) *
         sqrt(2) *
         (
-            -sqrt(85) * sh_7_1 * x + sqrt(2210) * sh_7_11 * z + sqrt(2210) * sh_7_12 * y -
+            -sqrt(85) * sh_7_1 * x + sqrt(2210) * sh_7_11 * z +
+            sqrt(2210) * sh_7_12 * y -
             sqrt(85) * sh_7_13 * z - sqrt(2210) * sh_7_3 * x
         )
     )
     sh_8_14 = (
         -1 / 240 * sqrt(510) * sh_7_0 * x +
         (1 / 240) * sqrt(46410) * sh_7_12 * z +
-        (1 / 60) * sqrt(1785) * sh_7_13 * y - 1 / 240 * sqrt(510) * sh_7_14 * z -
+        (1 / 60) * sqrt(1785) * sh_7_13 * y -
+        1 / 240 * sqrt(510) * sh_7_14 * z -
         1 / 240 * sqrt(46410) * sh_7_2 * x
     )
     sh_8_15 = (
@@ -772,7 +779,8 @@ function _spherical_harmonics(
     end
 
     sh_9_0 = (1 / 6) * sqrt(38) * (sh_8_0 * z + sh_8_16 * x)
-    sh_9_1 = (1 / 9) * sqrt(19) * (sh_8_0 * y + 2 * sh_8_1 * z + 2 * sh_8_15 * x)
+    sh_9_1 = (1 / 9) * sqrt(19) *
+             (sh_8_0 * y + 2 * sh_8_1 * z + 2 * sh_8_15 * x)
     sh_9_2 = (
         -1 / 306 * sqrt(646) * sh_8_0 * z +
         (4 / 153) * sqrt(646) * sh_8_1 * y +
@@ -788,73 +796,88 @@ function _spherical_harmonics(
         (1 / 306) * sqrt(67830) * sh_8_3 * z
     )
     sh_9_4 = (
-        (1 / 306) * sqrt(58786) * sh_8_12 * x + (1 / 153) * sqrt(969) * sh_8_14 * x -
+        (1 / 306) * sqrt(58786) * sh_8_12 * x +
+        (1 / 153) * sqrt(969) * sh_8_14 * x -
         1 / 153 * sqrt(969) * sh_8_2 * z +
         (2 / 153) * sqrt(4522) * sh_8_3 * y +
         (1 / 306) * sqrt(58786) * sh_8_4 * z
     )
     sh_9_5 = (
-        (1 / 153) * sqrt(12597) * sh_8_11 * x + (1 / 153) * sqrt(1615) * sh_8_13 * x -
+        (1 / 153) * sqrt(12597) * sh_8_11 * x +
+        (1 / 153) * sqrt(1615) * sh_8_13 * x -
         1 / 153 * sqrt(1615) * sh_8_3 * z +
         (1 / 153) * sqrt(20995) * sh_8_4 * y +
         (1 / 153) * sqrt(12597) * sh_8_5 * z
     )
     sh_9_6 = (
-        (1 / 153) * sqrt(10659) * sh_8_10 * x + (1 / 306) * sqrt(9690) * sh_8_12 * x -
+        (1 / 153) * sqrt(10659) * sh_8_10 * x +
+        (1 / 306) * sqrt(9690) * sh_8_12 * x -
         1 / 306 * sqrt(9690) * sh_8_4 * z +
         (2 / 51) * sqrt(646) * sh_8_5 * y +
         (1 / 153) * sqrt(10659) * sh_8_6 * z
     )
     sh_9_7 = (
-        (1 / 306) * sqrt(13566) * sh_8_11 * x - 1 / 306 * sqrt(13566) * sh_8_5 * z +
+        (1 / 306) * sqrt(13566) * sh_8_11 * x -
+        1 / 306 * sqrt(13566) * sh_8_5 * z +
         (1 / 153) * sqrt(24871) * sh_8_6 * y +
         (1 / 306) * sqrt(35530) * sh_8_7 * z +
         (1 / 306) * sqrt(35530) * sh_8_9 * x
     )
     sh_9_8 = (
-        (1 / 153) * sqrt(4522) * sh_8_10 * x - 1 / 153 * sqrt(4522) * sh_8_6 * z +
+        (1 / 153) * sqrt(4522) * sh_8_10 * x -
+        1 / 153 * sqrt(4522) * sh_8_6 * z +
         (4 / 153) * sqrt(1615) * sh_8_7 * y +
         (1 / 51) * sqrt(1615) * sh_8_8 * x
     )
-    sh_9_9 = (1 / 51) * sqrt(323) * (-2 * sh_8_7 * x + 3 * sh_8_8 * y - 2 * sh_8_9 * z)
+    sh_9_9 = (1 / 51) * sqrt(323) *
+             (-2 * sh_8_7 * x + 3 * sh_8_8 * y - 2 * sh_8_9 * z)
     sh_9_10 = (
-        -1 / 153 * sqrt(4522) * sh_8_10 * z - 1 / 153 * sqrt(4522) * sh_8_6 * x +
+        -1 / 153 * sqrt(4522) * sh_8_10 * z -
+        1 / 153 * sqrt(4522) * sh_8_6 * x +
         (1 / 51) * sqrt(1615) * sh_8_8 * z +
         (4 / 153) * sqrt(1615) * sh_8_9 * y
     )
     sh_9_11 = (
-        (1 / 153) * sqrt(24871) * sh_8_10 * y - 1 / 306 * sqrt(13566) * sh_8_11 * z -
-        1 / 306 * sqrt(13566) * sh_8_5 * x - 1 / 306 * sqrt(35530) * sh_8_7 * x +
+        (1 / 153) * sqrt(24871) * sh_8_10 * y -
+        1 / 306 * sqrt(13566) * sh_8_11 * z -
+        1 / 306 * sqrt(13566) * sh_8_5 * x -
+        1 / 306 * sqrt(35530) * sh_8_7 * x +
         (1 / 306) * sqrt(35530) * sh_8_9 * z
     )
     sh_9_12 = (
-        (1 / 153) * sqrt(10659) * sh_8_10 * z + (2 / 51) * sqrt(646) * sh_8_11 * y -
+        (1 / 153) * sqrt(10659) * sh_8_10 * z +
+        (2 / 51) * sqrt(646) * sh_8_11 * y -
         1 / 306 * sqrt(9690) * sh_8_12 * z - 1 / 306 * sqrt(9690) * sh_8_4 * x -
         1 / 153 * sqrt(10659) * sh_8_6 * x
     )
     sh_9_13 = (
-        (1 / 153) * sqrt(12597) * sh_8_11 * z + (1 / 153) * sqrt(20995) * sh_8_12 * y -
+        (1 / 153) * sqrt(12597) * sh_8_11 * z +
+        (1 / 153) * sqrt(20995) * sh_8_12 * y -
         1 / 153 * sqrt(1615) * sh_8_13 * z - 1 / 153 * sqrt(1615) * sh_8_3 * x -
         1 / 153 * sqrt(12597) * sh_8_5 * x
     )
     sh_9_14 = (
-        (1 / 306) * sqrt(58786) * sh_8_12 * z + (2 / 153) * sqrt(4522) * sh_8_13 * y -
+        (1 / 306) * sqrt(58786) * sh_8_12 * z +
+        (2 / 153) * sqrt(4522) * sh_8_13 * y -
         1 / 153 * sqrt(969) * sh_8_14 * z - 1 / 153 * sqrt(969) * sh_8_2 * x -
         1 / 306 * sqrt(58786) * sh_8_4 * x
     )
     sh_9_15 = (
         -1 / 306 * sqrt(1938) * sh_8_1 * x +
         (1 / 306) * sqrt(67830) * sh_8_13 * z +
-        (1 / 51) * sqrt(1615) * sh_8_14 * y - 1 / 306 * sqrt(1938) * sh_8_15 * z -
+        (1 / 51) * sqrt(1615) * sh_8_14 * y -
+        1 / 306 * sqrt(1938) * sh_8_15 * z -
         1 / 306 * sqrt(67830) * sh_8_3 * x
     )
     sh_9_16 = (
         -1 / 306 * sqrt(646) * sh_8_0 * x +
         (2 / 153) * sqrt(4845) * sh_8_14 * z +
-        (4 / 153) * sqrt(646) * sh_8_15 * y - 1 / 306 * sqrt(646) * sh_8_16 * z -
+        (4 / 153) * sqrt(646) * sh_8_15 * y -
+        1 / 306 * sqrt(646) * sh_8_16 * z -
         2 / 153 * sqrt(4845) * sh_8_2 * x
     )
-    sh_9_17 = (1 / 9) * sqrt(19) * (-2 * sh_8_1 * x + 2 * sh_8_15 * z + sh_8_16 * y)
+    sh_9_17 = (1 / 9) * sqrt(19) *
+              (-2 * sh_8_1 * x + 2 * sh_8_15 * z + sh_8_16 * y)
     sh_9_18 = (1 / 6) * sqrt(38) * (-sh_8_0 * x + sh_8_16 * z)
     if lmax == 9
         return stack(
@@ -985,31 +1008,36 @@ function _spherical_harmonics(
         (1 / 95) * sqrt(6783) * sh_9_3 * z
     )
     sh_10_4 = (
-        (3 / 95) * sqrt(665) * sh_9_14 * x + (3 / 190) * sqrt(133) * sh_9_16 * x -
+        (3 / 95) * sqrt(665) * sh_9_14 * x +
+        (3 / 190) * sqrt(133) * sh_9_16 * x -
         3 / 190 * sqrt(133) * sh_9_2 * z +
         (4 / 95) * sqrt(399) * sh_9_3 * y +
         (3 / 95) * sqrt(665) * sh_9_4 * z
     )
     sh_10_5 = (
-        (21 / 380) * sqrt(190) * sh_9_13 * x + (1 / 190) * sqrt(1995) * sh_9_15 * x -
+        (21 / 380) * sqrt(190) * sh_9_13 * x +
+        (1 / 190) * sqrt(1995) * sh_9_15 * x -
         1 / 190 * sqrt(1995) * sh_9_3 * z +
         (3 / 38) * sqrt(133) * sh_9_4 * y +
         (21 / 380) * sqrt(190) * sh_9_5 * z
     )
     sh_10_6 = (
-        (7 / 380) * sqrt(1482) * sh_9_12 * x + (3 / 380) * sqrt(1330) * sh_9_14 * x -
+        (7 / 380) * sqrt(1482) * sh_9_12 * x +
+        (3 / 380) * sqrt(1330) * sh_9_14 * x -
         3 / 380 * sqrt(1330) * sh_9_4 * z +
         (21 / 95) * sqrt(19) * sh_9_5 * y +
         (7 / 380) * sqrt(1482) * sh_9_6 * z
     )
     sh_10_7 = (
-        (3 / 190) * sqrt(1729) * sh_9_11 * x + (21 / 380) * sqrt(38) * sh_9_13 * x -
+        (3 / 190) * sqrt(1729) * sh_9_11 * x +
+        (21 / 380) * sqrt(38) * sh_9_13 * x -
         21 / 380 * sqrt(38) * sh_9_5 * z +
         (7 / 190) * sqrt(741) * sh_9_6 * y +
         (3 / 190) * sqrt(1729) * sh_9_7 * z
     )
     sh_10_8 = (
-        (3 / 190) * sqrt(1463) * sh_9_10 * x + (7 / 190) * sqrt(114) * sh_9_12 * x -
+        (3 / 190) * sqrt(1463) * sh_9_10 * x +
+        (7 / 190) * sqrt(114) * sh_9_12 * x -
         7 / 190 * sqrt(114) * sh_9_6 * z +
         (6 / 95) * sqrt(266) * sh_9_7 * y +
         (3 / 190) * sqrt(1463) * sh_9_8 * z
@@ -1020,42 +1048,50 @@ function _spherical_harmonics(
         (1 / 190) * sqrt(21945) * sh_9_9 * x
     )
     sh_10_10 = (
-        -3 / 190 * sqrt(1995) * sh_9_10 * z - 3 / 190 * sqrt(1995) * sh_9_8 * x +
+        -3 / 190 * sqrt(1995) * sh_9_10 * z -
+        3 / 190 * sqrt(1995) * sh_9_8 * x +
         (1 / 19) * sqrt(399) * sh_9_9 * y
     )
     sh_10_11 = (
-        (3 / 190) * sqrt(4389) * sh_9_10 * y - 3 / 190 * sqrt(798) * sh_9_11 * z -
+        (3 / 190) * sqrt(4389) * sh_9_10 * y -
+        3 / 190 * sqrt(798) * sh_9_11 * z -
         3 / 190 * sqrt(798) * sh_9_7 * x + (1 / 190) * sqrt(21945) * sh_9_9 * z
     )
     sh_10_12 = (
-        (3 / 190) * sqrt(1463) * sh_9_10 * z + (6 / 95) * sqrt(266) * sh_9_11 * y -
+        (3 / 190) * sqrt(1463) * sh_9_10 * z +
+        (6 / 95) * sqrt(266) * sh_9_11 * y -
         7 / 190 * sqrt(114) * sh_9_12 * z - 7 / 190 * sqrt(114) * sh_9_6 * x -
         3 / 190 * sqrt(1463) * sh_9_8 * x
     )
     sh_10_13 = (
-        (3 / 190) * sqrt(1729) * sh_9_11 * z + (7 / 190) * sqrt(741) * sh_9_12 * y -
+        (3 / 190) * sqrt(1729) * sh_9_11 * z +
+        (7 / 190) * sqrt(741) * sh_9_12 * y -
         21 / 380 * sqrt(38) * sh_9_13 * z - 21 / 380 * sqrt(38) * sh_9_5 * x -
         3 / 190 * sqrt(1729) * sh_9_7 * x
     )
     sh_10_14 = (
-        (7 / 380) * sqrt(1482) * sh_9_12 * z + (21 / 95) * sqrt(19) * sh_9_13 * y -
+        (7 / 380) * sqrt(1482) * sh_9_12 * z +
+        (21 / 95) * sqrt(19) * sh_9_13 * y -
         3 / 380 * sqrt(1330) * sh_9_14 * z - 3 / 380 * sqrt(1330) * sh_9_4 * x -
         7 / 380 * sqrt(1482) * sh_9_6 * x
     )
     sh_10_15 = (
-        (21 / 380) * sqrt(190) * sh_9_13 * z + (3 / 38) * sqrt(133) * sh_9_14 * y -
+        (21 / 380) * sqrt(190) * sh_9_13 * z +
+        (3 / 38) * sqrt(133) * sh_9_14 * y -
         1 / 190 * sqrt(1995) * sh_9_15 * z - 1 / 190 * sqrt(1995) * sh_9_3 * x -
         21 / 380 * sqrt(190) * sh_9_5 * x
     )
     sh_10_16 = (
-        (3 / 95) * sqrt(665) * sh_9_14 * z + (4 / 95) * sqrt(399) * sh_9_15 * y -
+        (3 / 95) * sqrt(665) * sh_9_14 * z +
+        (4 / 95) * sqrt(399) * sh_9_15 * y -
         3 / 190 * sqrt(133) * sh_9_16 * z - 3 / 190 * sqrt(133) * sh_9_2 * x -
         3 / 95 * sqrt(665) * sh_9_4 * x
     )
     sh_10_17 = (
         -3 / 380 * sqrt(266) * sh_9_1 * x +
         (1 / 95) * sqrt(6783) * sh_9_15 * z +
-        (3 / 190) * sqrt(2261) * sh_9_16 * y - 3 / 380 * sqrt(266) * sh_9_17 * z -
+        (3 / 190) * sqrt(2261) * sh_9_16 * y -
+        3 / 380 * sqrt(266) * sh_9_17 * z -
         1 / 95 * sqrt(6783) * sh_9_3 * x
     )
     sh_10_18 = (
@@ -1220,93 +1256,114 @@ function _spherical_harmonics(
         (1 / 154) * sqrt(18354) * sh_10_3 * z
     )
     sh_11_4 = (
-        (1 / 154) * sqrt(16422) * sh_10_16 * x + (1 / 77) * sqrt(161) * sh_10_18 * x -
+        (1 / 154) * sqrt(16422) * sh_10_16 * x +
+        (1 / 77) * sqrt(161) * sh_10_18 * x -
         1 / 77 * sqrt(161) * sh_10_2 * z +
         (2 / 77) * sqrt(966) * sh_10_3 * y +
         (1 / 154) * sqrt(16422) * sh_10_4 * z
     )
     sh_11_5 = (
-        (2 / 231) * sqrt(8211) * sh_10_15 * x + (1 / 231) * sqrt(2415) * sh_10_17 * x -
+        (2 / 231) * sqrt(8211) * sh_10_15 * x +
+        (1 / 231) * sqrt(2415) * sh_10_17 * x -
         1 / 231 * sqrt(2415) * sh_10_3 * z +
         (1 / 231) * sqrt(41055) * sh_10_4 * y +
         (2 / 231) * sqrt(8211) * sh_10_5 * z
     )
     sh_11_6 = (
-        (2 / 77) * sqrt(805) * sh_10_14 * x + (1 / 154) * sqrt(1610) * sh_10_16 * x -
+        (2 / 77) * sqrt(805) * sh_10_14 * x +
+        (1 / 154) * sqrt(1610) * sh_10_16 * x -
         1 / 154 * sqrt(1610) * sh_10_4 * z +
         (4 / 77) * sqrt(322) * sh_10_5 * y +
         (2 / 77) * sqrt(805) * sh_10_6 * z
     )
     sh_11_7 = (
-        (1 / 22) * sqrt(230) * sh_10_13 * x + (1 / 22) * sqrt(46) * sh_10_15 * x -
+        (1 / 22) * sqrt(230) * sh_10_13 * x +
+        (1 / 22) * sqrt(46) * sh_10_15 * x -
         1 / 22 * sqrt(46) * sh_10_5 * z +
         (1 / 11) * sqrt(115) * sh_10_6 * y +
         (1 / 22) * sqrt(230) * sh_10_7 * z
     )
     sh_11_8 = (
-        (1 / 66) * sqrt(1794) * sh_10_12 * x + (1 / 33) * sqrt(138) * sh_10_14 * x -
+        (1 / 66) * sqrt(1794) * sh_10_12 * x +
+        (1 / 33) * sqrt(138) * sh_10_14 * x -
         1 / 33 * sqrt(138) * sh_10_6 * z +
         (4 / 33) * sqrt(69) * sh_10_7 * y +
         (1 / 66) * sqrt(1794) * sh_10_8 * z
     )
     sh_11_9 = (
-        (1 / 77) * sqrt(2093) * sh_10_11 * x + (1 / 77) * sqrt(966) * sh_10_13 * x -
+        (1 / 77) * sqrt(2093) * sh_10_11 * x +
+        (1 / 77) * sqrt(966) * sh_10_13 * x -
         1 / 77 * sqrt(966) * sh_10_7 * z +
         (1 / 77) * sqrt(6279) * sh_10_8 * y +
         (1 / 77) * sqrt(2093) * sh_10_9 * z
     )
     sh_11_10 = (
-        (1 / 77) * sqrt(3542) * sh_10_10 * x + (1 / 154) * sqrt(4830) * sh_10_12 * x -
-        1 / 154 * sqrt(4830) * sh_10_8 * z + (2 / 77) * sqrt(1610) * sh_10_9 * y
+        (1 / 77) * sqrt(3542) * sh_10_10 * x +
+        (1 / 154) * sqrt(4830) * sh_10_12 * x -
+        1 / 154 * sqrt(4830) * sh_10_8 * z +
+        (2 / 77) * sqrt(1610) * sh_10_9 * y
     )
     sh_11_11 = (
-        (1 / 21) * sqrt(483) * sh_10_10 * y - 1 / 231 * sqrt(26565) * sh_10_11 * z -
+        (1 / 21) * sqrt(483) * sh_10_10 * y -
+        1 / 231 * sqrt(26565) * sh_10_11 * z -
         1 / 231 * sqrt(26565) * sh_10_9 * x
     )
     sh_11_12 = (
-        (1 / 77) * sqrt(3542) * sh_10_10 * z + (2 / 77) * sqrt(1610) * sh_10_11 * y -
-        1 / 154 * sqrt(4830) * sh_10_12 * z - 1 / 154 * sqrt(4830) * sh_10_8 * x
+        (1 / 77) * sqrt(3542) * sh_10_10 * z +
+        (2 / 77) * sqrt(1610) * sh_10_11 * y -
+        1 / 154 * sqrt(4830) * sh_10_12 * z -
+        1 / 154 * sqrt(4830) * sh_10_8 * x
     )
     sh_11_13 = (
-        (1 / 77) * sqrt(2093) * sh_10_11 * z + (1 / 77) * sqrt(6279) * sh_10_12 * y -
+        (1 / 77) * sqrt(2093) * sh_10_11 * z +
+        (1 / 77) * sqrt(6279) * sh_10_12 * y -
         1 / 77 * sqrt(966) * sh_10_13 * z - 1 / 77 * sqrt(966) * sh_10_7 * x -
         1 / 77 * sqrt(2093) * sh_10_9 * x
     )
     sh_11_14 = (
-        (1 / 66) * sqrt(1794) * sh_10_12 * z + (4 / 33) * sqrt(69) * sh_10_13 * y -
+        (1 / 66) * sqrt(1794) * sh_10_12 * z +
+        (4 / 33) * sqrt(69) * sh_10_13 * y -
         1 / 33 * sqrt(138) * sh_10_14 * z - 1 / 33 * sqrt(138) * sh_10_6 * x -
         1 / 66 * sqrt(1794) * sh_10_8 * x
     )
     sh_11_15 = (
-        (1 / 22) * sqrt(230) * sh_10_13 * z + (1 / 11) * sqrt(115) * sh_10_14 * y -
+        (1 / 22) * sqrt(230) * sh_10_13 * z +
+        (1 / 11) * sqrt(115) * sh_10_14 * y -
         1 / 22 * sqrt(46) * sh_10_15 * z - 1 / 22 * sqrt(46) * sh_10_5 * x -
         1 / 22 * sqrt(230) * sh_10_7 * x
     )
     sh_11_16 = (
-        (2 / 77) * sqrt(805) * sh_10_14 * z + (4 / 77) * sqrt(322) * sh_10_15 * y -
-        1 / 154 * sqrt(1610) * sh_10_16 * z - 1 / 154 * sqrt(1610) * sh_10_4 * x -
+        (2 / 77) * sqrt(805) * sh_10_14 * z +
+        (4 / 77) * sqrt(322) * sh_10_15 * y -
+        1 / 154 * sqrt(1610) * sh_10_16 * z -
+        1 / 154 * sqrt(1610) * sh_10_4 * x -
         2 / 77 * sqrt(805) * sh_10_6 * x
     )
     sh_11_17 = (
-        (2 / 231) * sqrt(8211) * sh_10_15 * z + (1 / 231) * sqrt(41055) * sh_10_16 * y -
-        1 / 231 * sqrt(2415) * sh_10_17 * z - 1 / 231 * sqrt(2415) * sh_10_3 * x -
+        (2 / 231) * sqrt(8211) * sh_10_15 * z +
+        (1 / 231) * sqrt(41055) * sh_10_16 * y -
+        1 / 231 * sqrt(2415) * sh_10_17 * z -
+        1 / 231 * sqrt(2415) * sh_10_3 * x -
         2 / 231 * sqrt(8211) * sh_10_5 * x
     )
     sh_11_18 = (
-        (1 / 154) * sqrt(16422) * sh_10_16 * z + (2 / 77) * sqrt(966) * sh_10_17 * y -
+        (1 / 154) * sqrt(16422) * sh_10_16 * z +
+        (2 / 77) * sqrt(966) * sh_10_17 * y -
         1 / 77 * sqrt(161) * sh_10_18 * z - 1 / 77 * sqrt(161) * sh_10_2 * x -
         1 / 154 * sqrt(16422) * sh_10_4 * x
     )
     sh_11_19 = (
         -1 / 154 * sqrt(322) * sh_10_1 * x +
         (1 / 154) * sqrt(18354) * sh_10_17 * z +
-        (1 / 77) * sqrt(3059) * sh_10_18 * y - 1 / 154 * sqrt(322) * sh_10_19 * z -
+        (1 / 77) * sqrt(3059) * sh_10_18 * y -
+        1 / 154 * sqrt(322) * sh_10_19 * z -
         1 / 154 * sqrt(18354) * sh_10_3 * x
     )
     sh_11_20 = (
         -1 / 462 * sqrt(966) * sh_10_0 * x +
         (1 / 231) * sqrt(45885) * sh_10_18 * z +
-        (2 / 231) * sqrt(4830) * sh_10_19 * y - 1 / 231 * sqrt(45885) * sh_10_2 * x -
+        (2 / 231) * sqrt(4830) * sh_10_19 * y -
+        1 / 231 * sqrt(45885) * sh_10_2 * x -
         1 / 462 * sqrt(966) * sh_10_20 * z
     )
     sh_11_21 = (
@@ -1486,13 +1543,15 @@ function _spherical_harmonics(
         (5 / 276) * sqrt(2415) * sh_11_3 * z
     )
     sh_12_4 = (
-        (5 / 276) * sqrt(2185) * sh_11_18 * x - 5 / 276 * sqrt(69) * sh_11_2 * z +
+        (5 / 276) * sqrt(2185) * sh_11_18 * x -
+        5 / 276 * sqrt(69) * sh_11_2 * z +
         (5 / 276) * sqrt(69) * sh_11_20 * x +
         (5 / 69) * sqrt(115) * sh_11_3 * y +
         (5 / 276) * sqrt(2185) * sh_11_4 * z
     )
     sh_12_5 = (
-        (5 / 184) * sqrt(874) * sh_11_17 * x + (5 / 276) * sqrt(115) * sh_11_19 * x -
+        (5 / 184) * sqrt(874) * sh_11_17 * x +
+        (5 / 276) * sqrt(115) * sh_11_19 * x -
         5 / 276 * sqrt(115) * sh_11_3 * z +
         (5 / 276) * sqrt(2185) * sh_11_4 * y +
         (5 / 184) * sqrt(874) * sh_11_5 * z
@@ -1501,25 +1560,29 @@ function _spherical_harmonics(
         (5 / 552) *
         sqrt(3) *
         (
-            sqrt(2346) * sh_11_16 * x + sqrt(230) * sh_11_18 * x - sqrt(230) * sh_11_4 * z +
+            sqrt(2346) * sh_11_16 * x + sqrt(230) * sh_11_18 * x -
+            sqrt(230) * sh_11_4 * z +
             12 * sqrt(23) * sh_11_5 * y +
             sqrt(2346) * sh_11_6 * z
         )
     )
     sh_12_7 = (
-        (5 / 138) * sqrt(391) * sh_11_15 * x + (5 / 552) * sqrt(966) * sh_11_17 * x -
+        (5 / 138) * sqrt(391) * sh_11_15 * x +
+        (5 / 552) * sqrt(966) * sh_11_17 * x -
         5 / 552 * sqrt(966) * sh_11_5 * z +
         (5 / 276) * sqrt(2737) * sh_11_6 * y +
         (5 / 138) * sqrt(391) * sh_11_7 * z
     )
     sh_12_8 = (
-        (5 / 138) * sqrt(345) * sh_11_14 * x + (5 / 276) * sqrt(322) * sh_11_16 * x -
+        (5 / 138) * sqrt(345) * sh_11_14 * x +
+        (5 / 276) * sqrt(322) * sh_11_16 * x -
         5 / 276 * sqrt(322) * sh_11_6 * z +
         (10 / 69) * sqrt(46) * sh_11_7 * y +
         (5 / 138) * sqrt(345) * sh_11_8 * z
     )
     sh_12_9 = (
-        (5 / 552) * sqrt(4830) * sh_11_13 * x + (5 / 92) * sqrt(46) * sh_11_15 * x -
+        (5 / 552) * sqrt(4830) * sh_11_13 * x +
+        (5 / 92) * sqrt(46) * sh_11_15 * x -
         5 / 92 * sqrt(46) * sh_11_7 * z +
         (5 / 92) * sqrt(345) * sh_11_8 * y +
         (5 / 552) * sqrt(4830) * sh_11_9 * z
@@ -1527,40 +1590,49 @@ function _spherical_harmonics(
     sh_12_10 = (
         (5 / 552) * sqrt(4186) * sh_11_10 * z +
         (5 / 552) * sqrt(4186) * sh_11_12 * x +
-        (5 / 184) * sqrt(230) * sh_11_14 * x - 5 / 184 * sqrt(230) * sh_11_8 * z +
+        (5 / 184) * sqrt(230) * sh_11_14 * x -
+        5 / 184 * sqrt(230) * sh_11_8 * z +
         (5 / 138) * sqrt(805) * sh_11_9 * y
     )
     sh_12_11 = (
         (5 / 276) * sqrt(3289) * sh_11_10 * y +
         (5 / 276) * sqrt(1794) * sh_11_11 * x +
-        (5 / 552) * sqrt(2530) * sh_11_13 * x - 5 / 552 * sqrt(2530) * sh_11_9 * z
+        (5 / 552) * sqrt(2530) * sh_11_13 * x -
+        5 / 552 * sqrt(2530) * sh_11_9 * z
     )
     sh_12_12 = (
-        -5 / 276 * sqrt(1518) * sh_11_10 * x + (5 / 23) * sqrt(23) * sh_11_11 * y -
+        -5 / 276 * sqrt(1518) * sh_11_10 * x +
+        (5 / 23) * sqrt(23) * sh_11_11 * y -
         5 / 276 * sqrt(1518) * sh_11_12 * z
     )
     sh_12_13 = (
-        (5 / 276) * sqrt(1794) * sh_11_11 * z + (5 / 276) * sqrt(3289) * sh_11_12 * y -
-        5 / 552 * sqrt(2530) * sh_11_13 * z - 5 / 552 * sqrt(2530) * sh_11_9 * x
+        (5 / 276) * sqrt(1794) * sh_11_11 * z +
+        (5 / 276) * sqrt(3289) * sh_11_12 * y -
+        5 / 552 * sqrt(2530) * sh_11_13 * z -
+        5 / 552 * sqrt(2530) * sh_11_9 * x
     )
     sh_12_14 = (
         -5 / 552 * sqrt(4186) * sh_11_10 * x +
         (5 / 552) * sqrt(4186) * sh_11_12 * z +
-        (5 / 138) * sqrt(805) * sh_11_13 * y - 5 / 184 * sqrt(230) * sh_11_14 * z -
+        (5 / 138) * sqrt(805) * sh_11_13 * y -
+        5 / 184 * sqrt(230) * sh_11_14 * z -
         5 / 184 * sqrt(230) * sh_11_8 * x
     )
     sh_12_15 = (
-        (5 / 552) * sqrt(4830) * sh_11_13 * z + (5 / 92) * sqrt(345) * sh_11_14 * y -
+        (5 / 552) * sqrt(4830) * sh_11_13 * z +
+        (5 / 92) * sqrt(345) * sh_11_14 * y -
         5 / 92 * sqrt(46) * sh_11_15 * z - 5 / 92 * sqrt(46) * sh_11_7 * x -
         5 / 552 * sqrt(4830) * sh_11_9 * x
     )
     sh_12_16 = (
-        (5 / 138) * sqrt(345) * sh_11_14 * z + (10 / 69) * sqrt(46) * sh_11_15 * y -
+        (5 / 138) * sqrt(345) * sh_11_14 * z +
+        (10 / 69) * sqrt(46) * sh_11_15 * y -
         5 / 276 * sqrt(322) * sh_11_16 * z - 5 / 276 * sqrt(322) * sh_11_6 * x -
         5 / 138 * sqrt(345) * sh_11_8 * x
     )
     sh_12_17 = (
-        (5 / 138) * sqrt(391) * sh_11_15 * z + (5 / 276) * sqrt(2737) * sh_11_16 * y -
+        (5 / 138) * sqrt(391) * sh_11_15 * z +
+        (5 / 276) * sqrt(2737) * sh_11_16 * y -
         5 / 552 * sqrt(966) * sh_11_17 * z - 5 / 552 * sqrt(966) * sh_11_5 * x -
         5 / 138 * sqrt(391) * sh_11_7 * x
     )
@@ -1574,25 +1646,30 @@ function _spherical_harmonics(
         )
     )
     sh_12_19 = (
-        (5 / 184) * sqrt(874) * sh_11_17 * z + (5 / 276) * sqrt(2185) * sh_11_18 * y -
+        (5 / 184) * sqrt(874) * sh_11_17 * z +
+        (5 / 276) * sqrt(2185) * sh_11_18 * y -
         5 / 276 * sqrt(115) * sh_11_19 * z - 5 / 276 * sqrt(115) * sh_11_3 * x -
         5 / 184 * sqrt(874) * sh_11_5 * x
     )
     sh_12_20 = (
-        (5 / 276) * sqrt(2185) * sh_11_18 * z + (5 / 69) * sqrt(115) * sh_11_19 * y -
+        (5 / 276) * sqrt(2185) * sh_11_18 * z +
+        (5 / 69) * sqrt(115) * sh_11_19 * y -
         5 / 276 * sqrt(69) * sh_11_2 * x - 5 / 276 * sqrt(69) * sh_11_20 * z -
         5 / 276 * sqrt(2185) * sh_11_4 * x
     )
     sh_12_21 = (
         -5 / 552 * sqrt(138) * sh_11_1 * x +
         (5 / 276) * sqrt(2415) * sh_11_19 * z +
-        (5 / 92) * sqrt(161) * sh_11_20 * y - 5 / 552 * sqrt(138) * sh_11_21 * z -
+        (5 / 92) * sqrt(161) * sh_11_20 * y -
+        5 / 552 * sqrt(138) * sh_11_21 * z -
         5 / 276 * sqrt(2415) * sh_11_3 * x
     )
     sh_12_22 = (
-        -5 / 552 * sqrt(46) * sh_11_0 * x - 5 / 552 * sqrt(10626) * sh_11_2 * x +
+        -5 / 552 * sqrt(46) * sh_11_0 * x -
+        5 / 552 * sqrt(10626) * sh_11_2 * x +
         (5 / 552) * sqrt(10626) * sh_11_20 * z +
-        (5 / 138) * sqrt(253) * sh_11_21 * y - 5 / 552 * sqrt(46) * sh_11_22 * z
+        (5 / 138) * sqrt(253) * sh_11_21 * y -
+        5 / 552 * sqrt(46) * sh_11_22 * z
     )
     sh_12_23 = -5 / 24 * sqrt(22) * sh_11_1 * x +
                (5 / 24) * sqrt(22) * sh_11_21 * z +

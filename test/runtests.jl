@@ -1,6 +1,6 @@
-using e3nn
+using E3NN
 using Test
 
-@testset "e3nn.jl" begin
-    include("o3/irreps.jl")
+@testset "E3NN.jl" begin
+    include("O3/irreps.jl")
 end
