@@ -36,9 +36,9 @@ The Inversion group has 2 irreps:
 \sigma_p(g) = \left \{ \begin{array}{l} 1 \text{ if } g = e \\ p \text{ if } g = I \end{array} \right..
 ```
 
-Therefore, the irreps of an element $g \in O(3)$, where $g = ri$ is given by, $\sigma_p(i)D^L(r)$. In our library, we represent it using [$Irrep$](@ref).
+Therefore, the irreps of an element $g \in O(3)$, where $g = ri$ is given by, $\sigma_p(i)D^L(r)$. In our library, we represent it using [`Irrep`](@ref).
 
-And, [`Irreps`] represents the direct sum of irreps of $O(3)$:
+And, [`Irreps`](@ref) represents the direct sum of irreps of $O(3)$:
 
 ```math
 g = r i \mapsto \bigoplus_{j=1}^n m_j \sigma_{p_j}(i) D^{L_j}(r)
@@ -61,7 +61,7 @@ For a small recap:
   Together, $l$ and $p$ fully characterize how a function or field transforms under both rotation and inversion.
 
 ```jldoctest
-julia> using E3NN.o3
+julia> using E3NN.O3
 
 julia> Irrep("1e")
 1e
@@ -76,4 +76,107 @@ Get the dimension of the representaion.
 ```jldoctest
 julia> dim(Irrep("1e"))
 3
+```
+
+## Irreps
+
+The Irreps struct represents a direct sum of irreducible representations.
+It is a collection of Irrep objects, each with an associated multiplicity.
+This is the primary way to describe the structure of feature vectors in an equivariant neural network.
+
+### Construction
+
+You can create an Irreps object in several ways:From a string, which is the most common method:
+
+```jldoctest
+julia> Irreps("3x0e + 2x1o")
+3x0e+2x1o
+```
+
+From a single Irrep, which will have a multiplicity of 1:
+
+```jldoctest
+julia> Irreps(Irrep("2e"))
+1x2e
+```
+
+From a list (Vector or Tuple) of Irrep or MulIrrep objects:
+
+```jldoctest
+julia> Irreps([Irrep("0e"), Irrep("1o")])
+1x0e+1x1o
+
+julia> Irreps([(2, Irrep("1e")), (3, Irrep("2o"))])
+2x1e+3x2o
+```
+
+An empty Irreps represents the zero-dimensional vector space.
+
+```jldoctest
+julia> Irreps()
+
+julia> sprint(show, Irreps())
+""
+```
+
+Properties and OperationsYou can inspect the properties of an Irreps object with several utility functions.The total dimension of the vector space is given by dim:
+
+```jldoctest
+julia> dim(Irreps("3x0e + 2x1o"))
+9
+```
+
+The total number of irreps (sum of multiplicities) is given by num\*irreps:
+
+```jldoctest
+julia> num_irreps(Irreps("3x0e + 2x1o"))
+5
+```
+
+The maximum `l` value is given by lmax:
+
+```jldoctest
+julia> lmax(Irreps("3x0e + 2x1o"))
+1
+```
+
+You can perform a direct sum using the + operator. The result is automatically regrouped into a canonical form.
+
+```jldoctest
+julia> Irreps("1x1o") + Irreps("2x0e") + Irreps("1x1o")
+2x0e+2x1o
+```
+
+You can scale the multiplicities using the \* operator.
+
+```jldoctest
+julia> 3 * Irreps("1x0e + 2x1o")
+3x0e+6x1o
+```
+
+### Manipulation and Filtering
+
+The library provides powerful functions to manipulate Irreps.
+`regroup` sorts the irreps and combines identical ones by summing their multiplicities.
+This is useful for creating a canonical representation.
+
+```jldoctest
+julia> regroup(Irreps("2x1o + 1x0e + 3x1o"))
+1x0e+5x1o
+```
+
+`filter` allows you to select a subset of the irreps based on various criteria.
+
+```jldoctest
+julia> irreps = Irreps("3x0e + 2x1o + 4x2e")
+3x0e+2x1o+4x2e
+
+julia> filter(irreps, lmax=1)
+3x0e+2x1o
+
+julia> filter(irreps, keep=Irreps("0e + 2e"))
+3x0e+4x2e
+
+julia> filter(irreps, drop=mulir -> mulir.mul > 2)
+2x1o
 ```

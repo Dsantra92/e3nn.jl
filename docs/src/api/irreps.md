@@ -1,7 +1,7 @@
 ## Irreducible Representation
 
 ```@autodocs
-Modules = [E3NN.o3 ]
-Pages   = ["o3/irreps.jl"]
+Modules = [E3NN.O3 ]
+Pages   = ["O3/irreps.jl"]
 Private = false
 ```
