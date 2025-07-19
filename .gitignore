@@ -1,2 +1,12 @@
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+.vscode/
+docs/build/
+docs/site/
+deps
+.vscode
+.zed
 Manifest.toml
-docs/build
+LocalPreferences.toml
+.DS_Store
