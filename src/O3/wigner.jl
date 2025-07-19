@@ -25,8 +25,10 @@ function su2_clebsch_gordan(j1::T, j2::T, j3::T) where {T <: Real}
         for m1 in [x / 2 for x in (-Int(2 * j1)):2:Int(2 * j1)]
             for m2 in [x / 2 for x in (-Int(2 * j2)):2:Int(2 * j2)]
                 if abs(m1 + m2) <= j3
-                    val = _su2_cg(promote(j1, m1), promote(j2, m2), promote(j3, m1 + m2))
-                    mat[Int(j1 + m1 + 1), Int(j2 + m2 + 1), Int(j3 + m1 + m2 + 1)] = val
+                    val = _su2_cg(
+                        promote(j1, m1), promote(j2, m2), promote(j3, m1 + m2))
+                    mat[Int(j1 + m1 + 1), Int(j2 + m2 + 1),
+                        Int(j3 + m1 + m2 + 1)] = val
                 end
             end
         end
@@ -76,7 +78,8 @@ function clebsch_gordan(l1::Int, l2::Int, l3::Int)
     Q3 = change_basis_real_to_complex(l3)
     result = zeros(ComplexF64, size(Q1, 2), size(Q2, 2), size(Q3, 2))
     Q3_conj_T = conj(transpose(Q3))
-    @tensor result[j, l, m] := Q1[i, j] * Q2[k, l] * Q3_conj_T[m, n] * C[i, k, n]
+    @tensor result[
+        j, l, m] := Q1[i, j] * Q2[k, l] * Q3_conj_T[m, n] * C[i, k, n]
     @assert all(abs.(imag.(C)) .< 1e-5)
     return real.(result)
 end
@@ -121,4 +124,6 @@ function wigner_D(l::Int, angles::SVector{3, T}) where {T <: Real}
     return wigner_D(l, angles[1], angles[2], angles[3])
 end
 
-Broadcast.broadcast(::typeof(wigner_D), l, α, β, γ) = broadcast(wigner_D, Ref(l), α, β, γ)
+function Broadcast.broadcast(::typeof(wigner_D), l, α, β, γ)
+    broadcast(wigner_D, Ref(l), α, β, γ)
+end

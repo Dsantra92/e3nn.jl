@@ -1,8 +1,8 @@
 module E3NN
 
-# o3
-include("o3/o3.jl")
-using .o3
+# O3
+include("O3/O3.jl")
+using .O3
 export Irrep
 
 end
